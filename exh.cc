@@ -10,15 +10,14 @@ using MB = vector<vector<bool>>; //Matrix for the Incompatibilities
 
 // GLOBAL VARIABLES
 /* ----------------------------------------------------- */
-//initialization of the elapsed time
-clock_t start = clock();
+clock_t start = clock(); //initialization of the elapsed time
 double duration;
 
 int num_films, num_preferences, num_rooms, shortest_festival = INT_MAX;
 vector<int> best_perm, perm; //global variables were the optimal and partial solutions are stored
 vector<bool> used;
 vector<string> billboard, cinema_rooms;
-map<string, int> filmindex;
+map<string, int> filmindex; //dictionatt to store the film and its index in the vector so that we don't have to look across the vector
 MB Inc;
 /* ----------------------------------------------------- */
 
@@ -55,9 +54,12 @@ void optimal_billboard_schedule(int k, const MB& Inc, vector<int>& perm,
         if(current_festival < shortest_festival){
             shortest_festival = current_festival;
             best_perm = perm;
-            print_projection(perm);
+            print_projection(perm); //HEM DE REDIRIGIR LA SORTIDA EN COMPTES D'IMPRIMIR-LA
         }
     }
+    //FALTA CONSIDERAR EL CAS EN QUE NOMÉS POGUEM POSAR UNA PEL·LICULA EN UNA SOLA SALA
+    //HAURÍEM DE GUARDAR EN ALGUN LLOC DEL VECTOR LA SALA EN LA QUAL ESTÀ LA PELI I NO FER-HO AL FINAL DE TOT
+    //SINÓ ESCRIUREM MALAMENT LES SALES
     for(int film = 0; film < perm.size(); ++film){ //loop for each film
         if(not used[film]){
             if(legal_projection(k, film, Inc, perm)){ //hem de tirar tants cops enrere en la permutacio fins que arribem a una divisio modul exacta
@@ -93,6 +95,7 @@ void read_incompatibilities(){
         cin >> a >> b; //S'HA DE CANVIAR PER LLEGIR DES D'ARXIU
         Inc[filmindex[a]][filmindex[b]] = Inc[filmindex[b]][filmindex[a]] = true;
     }
+
 }
 
 void read_cinema_rooms(){
@@ -109,7 +112,7 @@ void read_data(){
 
 int main(){
     read_data();
-    optimal_billboard_schedule(0, Inc, perm, used, 0);
+    optimal_billboard_schedule(0, Inc, perm, used, 0); //no faria falta passar com a paràmetre alguns atributs
 }
 
 
