@@ -5,6 +5,7 @@
 #include <limits>
 #include <time.h>
 #include <utility>
+#include <math.h>
 
 using namespace std;
 using MB = vector<vector<bool>>; //Matrix for the Incompatibilities
@@ -16,23 +17,23 @@ clock_t start = clock(); //initialization of the elapsed time
 double duration;
 
 int num_films, num_preferences, num_rooms, shortest_festival = INT_MAX;
-//vector<fd> best_perm, perm; //global variables were the optimal and partial solutions are stored
+vector<fd> best_perm; //global variables were the optimal and partial solutions are stored
 //vector<bool> used;
 vector<string> billboard, cinema_rooms;
 map<string, int> filmindex; //dictionatt to store the film and its index in the vector so that we don't have to look across the vector
 MB Inc;
 /* ----------------------------------------------------- */
 
-void print_projection(const vector<fd>& best_perm2){
+void print_projection(){
     //exectution time stops
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
     cout << duration << endl
          << shortest_festival << endl;
-    //for(int i = 0; i < best_perm2.size(); ++i) cout << best_perm2[i].first << " ";
-    //cout << endl;
-    for(int j = 0; j < best_perm2.size(); ++j){
+    for(int i = 0; i < best_perm.size(); ++i) cout << best_perm[i].first << " ";
+    cout << endl;
+    for(int j = 0; j < best_perm.size(); ++j){
         int x = j % num_rooms; //variable that helps us to determine in which days the fils are reproduced
-        cout << billboard[best_perm2[j].first] << " " << best_perm2[j].second << " "
+        cout << billboard[best_perm[j].first] << " " << best_perm[j].second << " "
              << cinema_rooms[x] << endl;
     }
 }
@@ -49,22 +50,22 @@ bool legal_projection(int k, int film, const MB& Inc, const vector<fd>& perm){ /
 //shortest_festival is the best configutation at the moment, at the end we'll return this value
 void optimal_billboard_schedule(int k, const MB& Inc, vector<fd>& perm,
                                 vector<bool>& used, int current_festival, int current_film){
-    if(k > 0 and not legal_projection(k - 1, current_film, Inc, perm)) //hem de tirar tants cops enrere en la permutacio fins que arribem a una divisio modul exacta
+    //if(k > 0 and not legal_projection(k - 1, current_film, Inc, perm)) //hem de tirar tants cops enrere en la permutacio fins que arribem a una divisio modul exacta
                                     //aixo significara que estem en el mateix dia
-        return;
-    if(current_festival > shortest_festival) return; // ens hem passat
+        //return;
+    if(k % num_rooms == 0) ++current_festival; //day changes) ++current_festival; //all rooms are assigned, so the festival lasts 1 day more
+    //if(current_festival > shortest_festival) return; // ens hem passat
     //as k is initially 0, a room is addes, which doesn't affect as 0 rooms doesn't make sense
-    if(k % num_rooms == 0){
-        ++current_festival;} //day changes) ++current_festival; //all rooms are assigned, so the festival lasts 1 day more
-    if(k == perm.size()){ //all films have been placed
 
+    //if(current_festival > num_films / num_rooms) return;
+    if(k == perm.size()){ //all films have been placed
         if(current_festival < shortest_festival){
             shortest_festival = current_festival;
-            print_projection(perm);
-            //best_perm = perm;
-             //HEM DE REDIRIGIR LA SORTIDA EN COMPTES D'IMPRIMIR-LA
+            best_perm = perm;
+            //print_projection(perm);
+            //HEM DE REDIRIGIR LA SORTIDA EN COMPTES D'IMPRIMIR-LA
         }
-    }else{
+    }else if(current_festival < shortest_festival and (k == 0 or legal_projection(k - 1, current_film, Inc, perm))){
         for(int film = 0; film < perm.size(); ++film){ //loop for each film
             if(not used[film]){
                     used[film] = true;
@@ -115,6 +116,7 @@ int main(){
     vector<fd> perm(num_films);
     vector<bool> used(num_films, false);
     optimal_billboard_schedule(0, Inc, perm, used, 0, 0); //no faria falta passar com a paràmetre alguns atributs
+    print_projection();
 }
 
 
