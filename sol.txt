@@ -1,0 +1,17 @@
+0.000497
+4
+film1 1 cinema1
+film2 1 cinema2
+film4 1 cinema3
+film5 1 cinema4
+film3 2 cinema1
+film6 2 cinema2
+film7 2 cinema3
+film15 2 cinema4
+film8 3 cinema1
+film10 3 cinema2
+film11 3 cinema3
+film14 3 cinema4
+film9 4 cinema1
+film12 4 cinema2
+film13 4 cinema3

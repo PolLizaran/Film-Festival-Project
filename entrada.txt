@@ -5,11 +5,8 @@ Star-Wars
 Terminator-2
 Tomb-Raider
 
-5
+2
 2001-A-Space-Odyssey Star-Wars
-2001-A-Space-Odyssey Raiders-of-the-Lost-Ark
-2001-A-Space-Odyssey Terminator-2
-2001-A-Space-Odyssey Tomb-Raider
 Terminator-2 Tomb-Raider
 
 2

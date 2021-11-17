@@ -16,8 +16,8 @@ clock_t start = clock(); //initialization of the elapsed time
 double duration;
 
 int num_films, num_preferences, num_rooms, shortest_festival = INT_MAX;
-//vector<fd> best_perm, perm; //global variables were the optimal and partial solutions are stored
-//vector<bool> used;
+vector<fd> best_perm, perm; //global variables were the optimal and partial solutions are stored
+vector<bool> used;
 vector<string> billboard, cinema_rooms;
 map<string, int> filmindex; //dictionatt to store the film and its index in the vector so that we don't have to look across the vector
 MB Inc;
@@ -28,8 +28,6 @@ void print_projection(const vector<fd>& best_perm2){
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
     cout << duration << endl
          << shortest_festival << endl;
-    //for(int i = 0; i < best_perm2.size(); ++i) cout << best_perm2[i].first << " ";
-    //cout << endl;
     for(int j = 0; j < best_perm2.size(); ++j){
         int x = j % num_rooms; //variable that helps us to determine in which days the fils are reproduced
         cout << billboard[best_perm2[j].first] << " " << best_perm2[j].second << " "
@@ -40,7 +38,7 @@ void print_projection(const vector<fd>& best_perm2){
 //checks whether the film can be projected in the current cinema room
 bool legal_projection(int k, int film, const MB& Inc, const vector<fd>& perm){ //passem per copia pq no volem que els canvis es guardin
     while(k % num_rooms != 0){
-        if(Inc[perm[k - 1].first][film]) return false; //they are incompatible
+        if(Inc[perm[k].first][film]) return false; //they are incompatible
         --k;
     }
     return true;
@@ -48,29 +46,30 @@ bool legal_projection(int k, int film, const MB& Inc, const vector<fd>& perm){ /
 
 //shortest_festival is the best configutation at the moment, at the end we'll return this value
 void optimal_billboard_schedule(int k, const MB& Inc, vector<fd>& perm,
-                                vector<bool>& used, int current_festival, int current_film){
-    if(k > 0 and not legal_projection(k - 1, current_film, Inc, perm)) //hem de tirar tants cops enrere en la permutacio fins que arribem a una divisio modul exacta
-                                    //aixo significara que estem en el mateix dia
-        return;
+                                vector<bool>& used, int current_festival, int legal_films){
     if(current_festival > shortest_festival) return; // ens hem passat
     //as k is initially 0, a room is addes, which doesn't affect as 0 rooms doesn't make sense
-    if(k % num_rooms == 0){
-        ++current_festival;} //day changes) ++current_festival; //all rooms are assigned, so the festival lasts 1 day more
+    if(k % num_rooms == 0 or legal_films == 0){
+        ++current_festival;
+        legal_films = num_films - k;} //day changes) ++current_festival; //all rooms are assigned, so the festival lasts 1 day more
     if(k == perm.size()){ //all films have been placed
-
         if(current_festival < shortest_festival){
             shortest_festival = current_festival;
-            print_projection(perm);
-            //best_perm = perm;
-             //HEM DE REDIRIGIR LA SORTIDA EN COMPTES D'IMPRIMIR-LA
+            best_perm = perm;
+            print_projection(best_perm); //HEM DE REDIRIGIR LA SORTIDA EN COMPTES D'IMPRIMIR-LA
         }
-    }else{
-        for(int film = 0; film < perm.size(); ++film){ //loop for each film
-            if(not used[film]){
-                    used[film] = true;
-                    perm[k] = {film, current_festival};
-                    optimal_billboard_schedule(k + 1, Inc, perm, used, current_festival, film);
-                    used[film] = false;
+    }
+
+    for(int film = 0; film < perm.size(); ++film){ //loop for each film
+        if(not used[film]){
+            if(legal_projection(k, film, Inc, perm)){ //hem de tirar tants cops enrere en la permutacio fins que arribem a una divisio modul exacta
+                //aixo significara que estem en el mateix dia
+                used[film] = true;
+                perm[k] = {film, current_festival};
+                optimal_billboard_schedule(k + 1, Inc, perm, used, current_festival, legal_films - 1);
+                used[film] = false;
+            }else{
+                optimal_billboard_schedule(k + 1, Inc, perm, used, current_festival, legal_films - 1);
             }
         }
     }
@@ -84,6 +83,8 @@ void read_films(){
         filmindex.insert({billboard[i], i});
     }
     //vectors that will be used later during the computation of the solution
+    perm = vector<fd>(num_films);
+    used = vector<bool>(num_films, false);
 }
 
 //pel·licules que no es poden projectar alhora
@@ -112,9 +113,7 @@ void read_data(){
 
 int main(){
     read_data();
-    vector<fd> perm(num_films);
-    vector<bool> used(num_films, false);
-    optimal_billboard_schedule(0, Inc, perm, used, 0, 0); //no faria falta passar com a paràmetre alguns atributs
+    optimal_billboard_schedule(0, Inc, perm, used, 0, num_films); //no faria falta passar com a paràmetre alguns atributs
 }
 
 
