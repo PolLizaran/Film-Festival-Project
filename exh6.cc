@@ -47,32 +47,27 @@ void print_projection()
     }
 }
 
-//checks whether the film can be projected in the current cinema room
-int projection(int current_film, MB& reproduced_together)
-{ //passem per copia pq no volem que els canvis es guardin
-    for(int day = 0; day < reproduced_together.size(); ++day){
-        if(not reproduced_together[day][current_film]) return day + 1;
+
+int projection(int current_film, vector<vector<bool>>& reproduced_together, vector<int>& used_rooms)
+{
+    for(int day = 1; day < reproduced_together.size(); ++day){
+        if(used_rooms[day] < num_rooms and
+           not reproduced_together[day][current_film]) return day;
     }
     return -1;
 }
 
-void propagate_restrictions(int day_of_projection, MB& reproduced_together, int film){
-    cout << "entra pel·lícula " << film << " en el dia " << day_of_projection << endl;
-    for (const int& f : Inc[film]) reproduced_together[day_of_projection - 1][f] = true;
-    for (bool h : reproduced_together[day_of_projection - 1]) cout << h << " ";
-    cout << "acaba" << endl;
+void propagate_restrictions(const int& day_of_projection, vector<vector<bool>>& reproduced_together, int film){
+    for (const int& f : Inc[film]) reproduced_together[day_of_projection][f] = true;
+    //for (bool x : reproduced_together[day_of_projection]) cout << x << ' ';
+    //cout << endl << endl;
 }
 
 //shortest_festival is the best configutation at the moment, at the end we'll return this value
 void optimal_billboard_schedule(int k, const MI& Inc, vector<fd>& perm,
-    vector<bool>& used, MB& reproduced_together, int current_festival)
+     vector<bool>& used, vector<vector<bool>>& reproduced_together, vector<int>& used_rooms,
+     int current_festival)
 {
-    //if (k % num_rooms == 0){
-    //    ++current_festival;}
-    //day changes) ++current_festival; //all rooms are assigned, so the festival lasts 1 day more
-    //as k is initially 0, a room is addes, which doesn't affect as 0 rooms doesn't make sense
-
-    //if(current_festival > num_films / num_rooms) return;
     if (k == perm.size()) { //all films have been placed
         if (current_festival < shortest_festival) {
             shortest_festival = current_festival;
@@ -83,23 +78,24 @@ void optimal_billboard_schedule(int k, const MI& Inc, vector<fd>& perm,
     } else if (current_festival < shortest_festival) {
         for (int film = 0; film < num_films; ++film) { //loop for each film
             if (not used[film]) {
-                int day_of_projection = projection(film, reproduced_together);
-                cout << "day_of_projection : " << day_of_projection << endl;
+                int day_of_projection = projection(film, reproduced_together, used_rooms);
                 if(day_of_projection < 0){
                     ++current_festival;
                     day_of_projection = current_festival; //the following day
                     reproduced_together.push_back(vector<bool>(num_films, false));
-                    for(int i = 0; i < reproduced_together.size(); ++i){
-                        for(int j = 0; j < reproduced_together[0].size(); ++j){
-                            cout << reproduced_together[i][j] << ' ';
-                        }
-                        cout << endl;
-                    }
+                    used_rooms.push_back(0);
+
                 }
+                //cout << "used_rooms: ";
+                //for(int i = 0; i < used_rooms.size(); ++i) cout << used_rooms[i] << ' ';
+                //cout << endl;
                 propagate_restrictions(day_of_projection, reproduced_together, film);//won't allow future films to be reproduced in the same day in case they are incompatible
                 used[film] = true;
-                perm[k] = { film, current_festival };
-                optimal_billboard_schedule(k + 1, Inc, perm, used, reproduced_together, current_festival);
+                used_rooms[day_of_projection] += 1;
+                perm[k] = { film, day_of_projection };
+                optimal_billboard_schedule(k + 1, Inc, perm, used, reproduced_together,
+                                           used_rooms, current_festival);
+                used_rooms[day_of_projection] -= 1;
                 used[film] = false;
             }
         }
@@ -150,8 +146,12 @@ int main()
     read_data();
     vector<fd> perm(num_films);
     vector<bool> used(num_films, false);
-    MB reproduced_together;
-    optimal_billboard_schedule(0, Inc, perm, used, reproduced_together, 0); //no faria falta passar com a paràmetre alguns atributs
+    vector<vector<bool>> reproduced_together;
+    reproduced_together.push_back(vector<bool>(num_films, false)); //we'll avoid this line of the vector
+
+    vector<int> used_rooms;
+    used_rooms.push_back(0);
+    optimal_billboard_schedule(0, Inc, perm, used, reproduced_together, used_rooms, 0); //no faria falta passar com a paràmetre alguns atributs
     print_projection();
 }
 
