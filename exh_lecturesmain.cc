@@ -1,6 +1,6 @@
 #include <algorithm>
+#include <fstream>
 #include <iostream>
-#include <string>
 #include <limits>
 #include <map>
 #include <math.h>
@@ -8,7 +8,6 @@
 #include <time.h>
 #include <utility>
 #include <vector>
-#include <fstream>
 
 using namespace std;
 using MI = vector<vector<int>>; //Matrix for the Incompatibilities
@@ -31,28 +30,32 @@ map<string, int> filmindex; //dictionatt to store the film and its index in the 
 /* ----------------------------------------------------- */
 
 //first element is the film, and the number of restrictions
-bool compare_by_restr(const pair<int, int>& A, const pair<int, int>& B){
-    if(A.second == B.second) return A.first < B.first;
+bool compare_by_restr(const pair<int, int>& A, const pair<int, int>& B)
+{
+    if (A.second == B.second)
+        return A.first < B.first;
     return A.second > B.second; //order by day of projection
 }
 
 //first element is the film, and the second the day of projection
-bool compare_by_first_projected(const fd& A, const fd& B){
-    if(A.second == B.second) return A.first < B.first;
+bool compare_by_first_projected(const fd& A, const fd& B)
+{
+    if (A.second == B.second)
+        return A.first < B.first;
     return A.second < B.second; //order by day of projection
 }
 
-
 void print_projection(vector<fd>& perm)
 {
-    cout.setf(ios::fixed);
-    cout.precision(1);
-    //exectution time stops
     ofstream output(output_file + ".txt");
+    output.setf(ios::fixed);
+    output.precision(1);
+
+    //exectution time stops
     duration = (clock() - start) / (double)CLOCKS_PER_SEC;
     output << duration << endl
            << shortest_festival << endl;
-/*
+    /*
     cout << "SIZE : " << perm.size() << endl;
     for (int i = 0; i < perm.size(); ++i)
         cout << perm[i].first << " " << perm[i].second << "    ";
@@ -61,13 +64,13 @@ void print_projection(vector<fd>& perm)
     cout << "Pepe : " << perm.size() << endl;*/
 
     //sort(perm.begin(), perm.end(), compare_by_first_projected);
-    for(int i = 0; i < num_films; ++i){
+    for (int i = 0; i < num_films; ++i) {
         int r = 0;
         for (int j = 0; j < num_films; ++j) {
-            if(perm[j].second == i){
+            if (perm[j].second == i) {
                 //int x = j % num_rooms; //variable that helps us to determine in which days the fils are reproduced
                 output << billboard[perm[j].first] << " " << perm[j].second << " "
-                     << cinema_rooms[r] << endl;
+                       << cinema_rooms[r] << endl;
                 ++r;
             }
         }
@@ -77,14 +80,17 @@ void print_projection(vector<fd>& perm)
 //checks whether the film can be projected in the current cinema room
 //int projection(int current_film, MB& reproduced_together){}
 
-void propagate_restrictions(int day, const MI& Inc, MI& reproduced_together, int film, int insert){
-    for(const int& x : Inc[film]) reproduced_together[day][x] += insert;
+void propagate_restrictions(int day, const MI& Inc, MI& reproduced_together, int film, int insert)
+{
+    for (const int& x : Inc[film])
+        reproduced_together[day][x] += insert;
     reproduced_together[day][film] += insert;
 }
 
-int search_day_to_be_fit(const MI& reproduced_together, const vector<int>& occupied_rooms, int film, int lenght_festival, const vector<bool>& used){
-    for(int day = 1; day <= lenght_festival; ++day){
-        if(not used[film] and reproduced_together[day][film] == 0 and occupied_rooms[day] < num_rooms){
+int search_day_to_be_fit(const MI& reproduced_together, const vector<int>& occupied_rooms, int film, int lenght_festival, const vector<bool>& used)
+{
+    for (int day = 1; day <= lenght_festival; ++day) {
+        if (not used[film] and reproduced_together[day][film] == 0 and occupied_rooms[day] < num_rooms) {
             return day;
         }
         //podem en cas que estigui prohibida o no quedin sales disponibles aquell dia
@@ -105,27 +111,29 @@ void optimal_billboard_schedule(int k, const MI& Inc, vector<fd>& perm,
     vector<bool>& used, const vector<pair<int, int>>& films_by_rest, MI& reproduced_together,
     vector<int>& occupied_rooms, int lenght_festival)
 {
-    if(shortest_festival == ceil(float(num_films)/float(num_rooms))) return;
+    if (shortest_festival == ceil(float(num_films) / float(num_rooms)))
+        return;
     if (k == num_films) { //all films have been placed
         if (lenght_festival < shortest_festival) {
             shortest_festival = lenght_festival;
             //best_perm = perm;
             print_projection(perm);
-        }return;
+        }
+        return;
     } else {
         for (int u = 0; u < num_films; ++u) { //loop for each film
             if (not used[films_by_rest[u].first] and lenght_festival < shortest_festival) {
                 int day = search_day_to_be_fit(reproduced_together, occupied_rooms, films_by_rest[u].first, lenght_festival, used);
-                if(day == -1){
+                if (day == -1) {
                     ++lenght_festival;
                     day = lenght_festival;
                 }
                 used[films_by_rest[u].first] = true;
                 ++occupied_rooms[day];
-                perm[k] = {films_by_rest[u].first, day};
+                perm[k] = { films_by_rest[u].first, day };
                 propagate_restrictions(day, Inc, reproduced_together, films_by_rest[u].first, 1);
                 optimal_billboard_schedule(k + 1, Inc, perm, used, films_by_rest, reproduced_together,
-                                           occupied_rooms, lenght_festival);
+                    occupied_rooms, lenght_festival);
                 propagate_restrictions(day, Inc, reproduced_together, films_by_rest[u].first, -1);
                 --occupied_rooms[day];
                 used[films_by_rest[u].first] = false;
@@ -134,11 +142,12 @@ void optimal_billboard_schedule(int k, const MI& Inc, vector<fd>& perm,
     }
 }
 
-void set_films_by_rest(vector<pair<int, int>>& v, const MI& Inc){
-    for(int i = 0; i < Inc.size(); ++i){
-        v[i] = { i, Inc[i].size()}; //we store the dimension of the array of restrictions
+void set_films_by_rest(vector<pair<int, int>>& v, const MI& Inc)
+{
+    for (int i = 0; i < Inc.size(); ++i) {
+        v[i] = { i, Inc[i].size() }; //we store the dimension of the array of restrictions
     }
-/*
+    /*
     cout << "vector : ";
     for(pair<int, int> u : v) cout << u.first << ' ' << u.second << "  ";
     cout << endl << endl << endl << endl;*/
@@ -197,7 +206,7 @@ MI read_data(ifstream& input)
     return Inc;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     ifstream input(argv[1]);
     output_file = string(argv[1]);
