@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <string>
 #include <limits>
 #include <map>
 #include <math.h>
@@ -20,6 +21,7 @@ clock_t start = clock(); //initialization of the elapsed time
 double duration;
 
 int shortest_festival = INT_MAX;
+string output_file;
 
 int num_films, num_preferences, num_rooms;
 vector<fd> best_perm; //global variables were the optimal and partial solutions are stored
@@ -43,11 +45,13 @@ bool compare_by_first_projected(const fd& A, const fd& B){
 
 void print_projection(vector<fd>& perm)
 {
+    cout.setf(ios::fixed);
+    cout.precision(1);
     //exectution time stops
-    ofstream output("sortida1.txt");
+    ofstream output(output_file + ".txt");
     duration = (clock() - start) / (double)CLOCKS_PER_SEC;
     output << duration << endl
-         << shortest_festival << endl;
+           << shortest_festival << endl;
 /*
     cout << "SIZE : " << perm.size() << endl;
     for (int i = 0; i < perm.size(); ++i)
@@ -193,13 +197,11 @@ MI read_data(ifstream& input)
     return Inc;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    cout.setf(ios::fixed);
-    cout.precision(1);
-    string file;
-    cin >> file;
-    ifstream input(file);
+    ifstream input(argv[1]);
+    output_file = string(argv[1]);
+    output_file = output_file.substr(0, output_file.size() - 4);
     MI Inc = read_data(input);
     vector<fd> perm(num_films);
     vector<bool> used(num_films, false);
