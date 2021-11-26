@@ -1,4 +1,4 @@
-0.000598
+0.0
 11
 film21 1 cinema1
 film18 1 cinema2
