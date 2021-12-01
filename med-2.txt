@@ -42,10 +42,10 @@ film8 20 cinema2
 film11 21 cinema1
 film20 21 cinema2
 film15 22 cinema1
-film4 22 cinema2
+film1 22 cinema2
 film16 23 cinema1
-film12 23 cinema2
-film5 24 cinema1
-film1 24 cinema2
+film5 23 cinema2
+film4 24 cinema1
+film12 24 cinema2
 film9 25 cinema1
 film3 25 cinema2

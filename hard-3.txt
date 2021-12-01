@@ -1,0 +1,9 @@
+23.6
+27
+film101 1 cinema1
+film95 1 cinema2
+film144 1 cinema3
+film81 1 cinema4
+film49 1 cinema5
+film6 1 cinema6
+film53 1 cinema7

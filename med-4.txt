@@ -1,4 +1,4 @@
-1.7
+2.6
 24
 film77 1 cinema1
 film110 1 cinema2

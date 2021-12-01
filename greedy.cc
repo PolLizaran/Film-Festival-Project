@@ -142,7 +142,7 @@ int main()
 
     MI Inc = read_data();
     start = clock();
-    vector<vector<int>> perm(num_films);
+    vector<vector<int>> perm(num_films + 1);
     vector<pair<int, int>> films_by_rest(num_films); //ordered by the number of restrictions, being the firts element the one with the most number of restrictions
     set_films_by_rest(films_by_rest, Inc);
     MB reproduced_together(num_films + 1, vector<bool>(num_films, false)); //we waste space because maybe we won't need a day for each film to be projected, first row will be avoided

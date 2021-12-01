@@ -101,7 +101,7 @@ void print_projection(const vector<fd>& perm)
 
     output << elapsed_time << endl
            << shortest_festival << endl;
-
+    cout << shortest_festival << endl;
     for (int i = 0; i < num_films; ++i) {
         int r = 0;
         for (int j = 0; j < num_films; ++j) {
@@ -116,15 +116,9 @@ void print_projection(const vector<fd>& perm)
 }
 
 //checks whether the film can be projected in the current cinema room
-int search_day_to_be_fit(const MI& reproduced_together, const vector<int>& occupied_rooms, int film, int lenght_festival)
+bool can_be_fit(const MI& reproduced_together, const vector<int>& occupied_rooms, int film, int day)
 {
-    for (int day = 1; day <= lenght_festival; ++day) {
-        if (reproduced_together[day][film] == 0 and occupied_rooms[day] < num_rooms) {
-            return day;
-        }
-        //podem en cas que estigui prohibida o no quedin sales disponibles aquell dia
-    }
-    return -1;
+    return reproduced_together[day][film] == 0 and occupied_rooms[day] < num_rooms;
 }
 
 /*
@@ -134,6 +128,7 @@ Args:
 */
 void propagate_restrictions(int day, const MI& Inc, MI& reproduced_together, int film, int modifier)
 {
+
     for (const int& x : Inc[film]) reproduced_together[day][x] += modifier;
     reproduced_together[day][film] += modifier;
 }
@@ -160,24 +155,26 @@ void optimal_billboard_schedule(int k, const MI& Inc, vector<fd>& perm,
             print_projection(perm);
         }
         return; //CREC QUE ES POT ELIMINAR
-    } else if (lenght_festival < shortest_festival){
-        for (int u = 0; u < num_films; ++u) { //loop for each film
-            const int film = films_by_rest[u].first;
-            if (not used[film]) {
-                int day = search_day_to_be_fit(reproduced_together, occupied_rooms, film, lenght_festival);
-                if (day == -1) {
+    } else {
+        for (int day = 1; day <= lenght_festival; ++day) { //loop for each film
+            const int film = films_by_rest[k].first;
+            bool film_not_added = true;
+            if (not used[film] and lenght_festival < shortest_festival){
+                if(can_be_fit(reproduced_together, occupied_rooms, film, day)){
+                    used[film] = true;
+                    film_not_added = true;
+                    ++occupied_rooms[day];
+                    perm[k] = { film, day };
+                    propagate_restrictions(day, Inc, reproduced_together, film, 1);
+                    optimal_billboard_schedule(k + 1, Inc, perm, used, films_by_rest, reproduced_together,
+                        occupied_rooms, lenght_festival);
+                    propagate_restrictions(day, Inc, reproduced_together, film, -1);
+                    film_not_added = false;
+                    --occupied_rooms[day];
+                    used[film] = false;
+                }else if (film_not_added and day == lenght_festival) {
                     ++lenght_festival;
-                    day = lenght_festival;
                 }
-                used[film] = true;
-                ++occupied_rooms[day];
-                perm[k] = { film, day };
-                propagate_restrictions(day, Inc, reproduced_together, film, 1);
-                optimal_billboard_schedule(k + 1, Inc, perm, used, films_by_rest, reproduced_together,
-                    occupied_rooms, lenght_festival);
-                propagate_restrictions(day, Inc, reproduced_together, film, -1);
-                --occupied_rooms[day];
-                used[film] = false;
             }
         }
     }
@@ -196,7 +193,7 @@ int main(int argc, char* argv[])
     set_films_by_rest(films_by_rest, Inc);
     MI reproduced_together(num_films + 1, vector<int>(num_films, 0)); //we waste space because maybe we won't need a day for each film to be projected, first row will be avoided
     vector<int> occupied_rooms(num_films + 1, 0); // el 0 no utilitzem
-    optimal_billboard_schedule(0, Inc, perm, used, films_by_rest, reproduced_together, occupied_rooms, 0); //no faria falta passar com a paràmetre alguns atributs
+    optimal_billboard_schedule(0, Inc, perm, used, films_by_rest, reproduced_together, occupied_rooms, 1); //no faria falta passar com a paràmetre alguns atributs
     //print_projection();
 
 }
