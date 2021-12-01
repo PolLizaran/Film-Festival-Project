@@ -108,7 +108,6 @@ void print_projection(const vector<vector<int>>& perm)
                  << cinema_rooms[p_film] << endl;
         }
     }
-    output.close();
 }
 
 //checks whether the film can be projected in the current cinema room
@@ -189,6 +188,7 @@ int main(int argc, char* argv[])
     MI reproduced_together(num_films + 1, vector<int>(num_films, 0)); //we waste space because maybe we won't need a day for each film to be projected, first row will be avoided
     vector<int> occupied_rooms(num_films + 1, 0); // el 0 no utilitzem
     optimal_billboard_schedule(0, Inc, perm, used, films_by_rest, reproduced_together, occupied_rooms, 1); //no faria falta passar com a paràmetre alguns atributs
+    output.close();
     //print_projection();
 
 }

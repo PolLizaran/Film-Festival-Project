@@ -113,6 +113,7 @@ void print_projection(const vector<fd>& perm)
             }
         }
     }
+    output.close();
 }
 
 //checks whether the film can be projected in the current cinema room
@@ -128,9 +129,7 @@ Args:
 */
 void propagate_restrictions(int day, const MI& Inc, MI& reproduced_together, int film, int modifier)
 {
-
     for (const int& x : Inc[film]) reproduced_together[day][x] += modifier;
-    reproduced_together[day][film] += modifier;
 }
 
 
@@ -158,21 +157,21 @@ void optimal_billboard_schedule(int k, const MI& Inc, vector<fd>& perm,
     } else {
         for (int day = 1; day <= lenght_festival; ++day) { //loop for each film
             const int film = films_by_rest[k].first;
-            bool film_not_added = true;
+            bool film_is_projected = false;
             if (not used[film] and lenght_festival < shortest_festival){
                 if(can_be_fit(reproduced_together, occupied_rooms, film, day)){
                     used[film] = true;
-                    film_not_added = true;
+                    film_is_projected = true;
                     ++occupied_rooms[day];
                     perm[k] = { film, day };
                     propagate_restrictions(day, Inc, reproduced_together, film, 1);
                     optimal_billboard_schedule(k + 1, Inc, perm, used, films_by_rest, reproduced_together,
                         occupied_rooms, lenght_festival);
                     propagate_restrictions(day, Inc, reproduced_together, film, -1);
-                    film_not_added = false;
+                    film_is_projected = false;
                     --occupied_rooms[day];
                     used[film] = false;
-                }else if (film_not_added and day == lenght_festival) {
+                }else if (not film_is_projected and day == lenght_festival) {
                     ++lenght_festival;
                 }
             }
