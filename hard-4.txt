@@ -1,5 +1,5 @@
-20.9
-51
+0.4
+52
 film98 1 cinema1
 film57 1 cinema2
 film85 2 cinema1
@@ -83,7 +83,7 @@ film103 31 cinema1
 film43 31 cinema2
 film115 32 cinema1
 film53 32 cinema2
-film6 32 cinema3
+film16 32 cinema3
 film63 33 cinema1
 film29 33 cinema2
 film78 34 cinema1
@@ -102,32 +102,32 @@ film76 38 cinema1
 film112 38 cinema2
 film8 38 cinema3
 film79 39 cinema1
-film119 39 cinema2
-film31 39 cinema3
+film81 39 cinema2
+film21 39 cinema3
 film105 40 cinema1
 film54 40 cinema2
 film18 40 cinema3
 film106 41 cinema1
-film81 41 cinema2
-film38 41 cinema3
+film42 41 cinema2
 film109 42 cinema1
 film37 42 cinema2
 film111 43 cinema1
 film10 43 cinema2
 film116 44 cinema1
 film50 44 cinema2
-film74 45 cinema1
-film42 45 cinema2
-film113 46 cinema1
-film21 46 cinema2
-film127 47 cinema1
-film33 47 cinema2
-film100 48 cinema1
-film64 48 cinema2
-film104 49 cinema1
-film19 49 cinema2
-film128 50 cinema1
-film16 50 cinema2
-film41 50 cinema3
-film77 51 cinema1
-film13 51 cinema2
+film119 45 cinema1
+film31 45 cinema2
+film74 46 cinema1
+film6 46 cinema2
+film113 47 cinema1
+film38 47 cinema2
+film127 48 cinema1
+film33 48 cinema2
+film100 49 cinema1
+film64 49 cinema2
+film104 50 cinema1
+film19 50 cinema2
+film128 51 cinema1
+film41 51 cinema2
+film77 52 cinema1
+film13 52 cinema2
