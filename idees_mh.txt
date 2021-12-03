@@ -1,0 +1,19 @@
+IDEA PRINCIPAL: Generar a partir d'una llavor fixada pseudoaleatòriament, assignant una probabiliat més gran
+a aquells grups de pelis que tenen més restriccions (dins un mateix grup la probabilitat es repartiex uniformement).
+
+Discriminem aquelles pelis que tenen 0 restriccions, per tal de trobar aquests probabilitats (pesos) i no
+quedi 0/# restriccions.
+
+Per tant, un cop hàgim trobat una solució generant amb les altres pelis, recorrem tots els dies i, en cas que
+quedin sales lliures a un dia concret, s'afegeix la pelicula de 0 restriccions.
+
+Sobre una mateixa llavor interem un nombre proporcional de vegades a les pelis que tenim al principi.
+A més, cada cop que fem una interació, penalitzem la peli que hem utilitzat, li restem una part de la seva proporció
+(proporcional a la proporció que ja tenia) i tornem a calcular totes les altres proporcions de les pelis
+segons aquesta nova probabilitat (determinar factor lambda).
+
+Al cap d'un temps, tornem al primer vector de probabilitats que teníem al principi i tornem a generar a
+partir d'aquest.
+
+**Implementem amb llistes de punters per guardar els elements que encara no hem posat i poder trobar el
+següent element a col·locar de manera molt més fàcil, sense haver de recorrer tot el vector "used".
