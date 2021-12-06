@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-//#include <limits>
+#include <limits>
 #include <map>
 //#include <math.h>
 #include <string>
@@ -30,6 +30,12 @@ map<string, int> filmindex; //stores the name of a film and its position in the 
 
 string output_file;
 /* ----------------------------------------------------- */
+
+struct Score {
+    int num_restr;
+    int cardinal;
+    double probability;
+};
 
 void read_films(ifstream& input)
 {
@@ -91,14 +97,39 @@ Returns:
     A vector of pairs containing the index of a film and the number of films with which is forbidden
     to be projected in the same day. Its elements are in descending order.
 */
-vector<pair<int, int>> order_films_by_rest()
+vector<pair<int, int>> order_films_by_restr(map<int, int>& different_cardinal, vector<Score>& films_scores)
 {
-    vector<pair<int, int>> films_by_rest(num_films);
+    vector<pair<int, int>> films_by_restr(num_films);
     for (int i = 0; i < Inc.size(); ++i) {
-        films_by_rest[i] = { i, Inc[i].size() };
+        films_by_restr[i] = { i, Inc[i].size() };
+        ++different_cardinal[Inc[i].size()];
     }
-    sort(films_by_rest.begin(), films_by_rest.end(), compare_by_restr);
-    return films_by_rest;
+    sort(films_by_restr.begin(), films_by_restr.end(), compare_by_restr);
+
+    films_scores.push_back({ films_by_restr[0].second, 1, 0.0 });
+    for (int j = 1; j < num_films; ++j) {
+        if (films_by_restr[j].second == films_scores.back().num_restr) {
+            ++films_scores.back().cardinal;
+        } else {
+            films_scores.push_back({ films_by_restr[j].first, 1, 0.0 });
+        }
+    }
+
+    int s = (films_scores.back().num_restr == 0 ? films_scores.size() - 1 : films_scores.size());
+    double limit_block = (s > 5 ? (s / 5) : 1);
+    double major_prob = (s > 5 ? (1 / (5 / 2.0)) : (1 / ((s + 1) / 2.0)));
+    cout << major_prob << endl;
+    //prob = 1 / ((s·(s+1)/2)/s) = 1 / (3/3 + 2/3 + 1/3) - no posem s + 1 perquè no considerem el bloc amb 0 restriccions
+    double block = 5;
+    for (int j = 0; j < s; ++j) {
+        if (j > int(limit_block)) {
+            --block;
+            limit_block += s / 5;
+        }
+        films_scores[j].probability = major_prob * (block / 5);
+    }
+
+    return films_by_restr;
 }
 
 void print_projection(const vector<fd>& perm)
@@ -130,7 +161,25 @@ void optimal_billboard_schedule()
 {
     vector<fd> perm(num_films); //contains a partial solution
     vector<bool> used(num_films, false);
-    vector<pair<int, int>> films_by_rest = order_films_by_rest();
+    map<int, int> different_cardinal; //primer element = nombre de restriccions, segon element = nombre d'elements que tenen el nombre de restriccions igual a la clau
+    vector<Score> films_scores; //vector mida = diccionari = nombre de blocs de restriccions diferents que hi ha
+    vector<pair<int, int>> films_by_restr = order_films_by_restr(different_cardinal, films_scores);
+
+    cout << "scores: " << endl;
+    for (auto e : films_scores) {
+        cout << "block: " << e.num_restr << " cardinal: " << e.cardinal << " probability: " << e.probability << endl;
+    }
+
+    /*cout << "diccionari:" << endl;
+    int count = 0;
+    int num_f = 0;
+    for (auto e : different_cardinal) {
+        cout << e.first << " " << e.second << endl;
+        count += e.first * e.second;
+        num_f += e.second;
+    }
+    cout << "total: " << count << endl;
+    cout << "total films: " << num_f << endl;*/
 
     MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
     //row simulate days of projection; columns are the films' index; an entry of the matrix contains
@@ -139,7 +188,7 @@ void optimal_billboard_schedule()
     //occupied_rooms[k] = number of projecting room at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
 
-    generate_schedule(0, perm, used, films_by_rest, prohibitions_per_day, occupied_rooms, 1);
+    //generate_schedule(0, perm, used, films_by_restr, prohibitions_per_day, occupied_rooms, 1);
 }
 
 int main(int argc, char* argv[])
