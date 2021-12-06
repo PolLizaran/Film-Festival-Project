@@ -5,6 +5,7 @@
 #include <limits>
 #include <map>
 //#include <math.h>
+#include <random>
 #include <string>
 #include <time.h>
 #include <utility>
@@ -118,7 +119,6 @@ vector<pair<int, int>> order_films_by_restr(map<int, int>& different_cardinal, v
     int s = (films_scores.back().num_restr == 0 ? films_scores.size() - 1 : films_scores.size());
     double limit_block = (s > 5 ? (s / 5) : 1);
     double major_prob = (s > 5 ? (1 / (5 / 2.0)) : (1 / ((s + 1) / 2.0)));
-    cout << major_prob << endl;
     //prob = 1 / ((s·(s+1)/2)/s) = 1 / (3/3 + 2/3 + 1/3) - no posem s + 1 perquè no considerem el bloc amb 0 restriccions
     double block = 5;
     for (int j = 0; j < s; ++j) {
@@ -157,6 +157,11 @@ void print_projection(const vector<fd>& perm)
     output.close();
 }
 
+int set_random_seed(const vector<Score>& films_scores)
+{
+    double p = (double)rand() / (double)RAND_MAX;
+}
+
 void optimal_billboard_schedule()
 {
     vector<fd> perm(num_films); //contains a partial solution
@@ -165,12 +170,13 @@ void optimal_billboard_schedule()
     vector<Score> films_scores; //vector mida = diccionari = nombre de blocs de restriccions diferents que hi ha
     vector<pair<int, int>> films_by_restr = order_films_by_restr(different_cardinal, films_scores);
 
+    /*
     cout << "scores: " << endl;
     for (auto e : films_scores) {
         cout << "block: " << e.num_restr << " cardinal: " << e.cardinal << " probability: " << e.probability << endl;
     }
 
-    /*cout << "diccionari:" << endl;
+    cout << "diccionari:" << endl;
     int count = 0;
     int num_f = 0;
     for (auto e : different_cardinal) {
@@ -187,8 +193,10 @@ void optimal_billboard_schedule()
     vector<int> occupied_rooms(num_films + 1, 0);
     //occupied_rooms[k] = number of projecting room at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
-
-    //generate_schedule(0, perm, used, films_by_restr, prohibitions_per_day, occupied_rooms, 1);
+    while (true) {
+        int film_seed = set_random_seed(films_scores);
+        generate_schedule(0, perm, used, films_by_restr, prohibitions_per_day, occupied_rooms, 1);
+    }
 }
 
 int main(int argc, char* argv[])
