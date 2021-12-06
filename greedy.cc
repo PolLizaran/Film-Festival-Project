@@ -14,7 +14,7 @@ using MB = vector<vector<bool>>;
 
 // GLOBAL VARIABLES
 /* ----------------------------------------------------- */
-clock_t start; //initialization of the elapsed time
+clock_t start = clock(); //initialization of the elapsed time
 double duration;
 
 int num_films, num_preferences, num_rooms;

@@ -1,4 +1,4 @@
-0.8
+0.7
 23
 film83 1 cinema1
 film65 1 cinema2
