@@ -4,8 +4,8 @@
 #include <iostream>
 #include <limits>
 #include <map>
-//#include <math.h>
-#include <random>
+#include <math.h>
+#include <stdlib.h> //from random
 #include <string>
 #include <time.h>
 #include <utility>
@@ -36,6 +36,11 @@ struct Score {
     int num_restr;
     int cardinal;
     double probability;
+};
+
+struct BlockInfo {
+    int starting;
+    double cdf;
 };
 
 void read_films(ifstream& input)
@@ -79,6 +84,31 @@ void read_data(ifstream& input)
     read_cinema_rooms(input);
 }
 
+void print_projection(const vector<fd>& perm)
+{
+    ofstream output(output_file);
+    output << setprecision(1) << fixed;
+    elapsed_time = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+    output << elapsed_time << endl
+           << shortest_festival << endl;
+    cout << shortest_festival << endl;
+
+    // looks across the vector "perm" to print those f+ilms that match with the day. Cinema rooms
+    // are choosen arbitarily
+    for (int day = 1; day < num_films; ++day) {
+        int r = 0; //room in where a film will be projected
+        for (int f = 0; f < num_films; ++f) {
+            if (perm[f].second == day) {
+                output << billboard[perm[f].first] << " " << perm[f].second
+                       << " " << cinema_rooms[r] << endl;
+                ++r;
+            }
+        }
+    }
+    output.close();
+}
+
 /*
 Args:
     A, B: contain the index of a film and the amount of films incompatible
@@ -98,80 +128,98 @@ Returns:
     A vector of pairs containing the index of a film and the number of films with which is forbidden
     to be projected in the same day. Its elements are in descending order.
 */
-vector<pair<int, int>> order_films_by_restr(map<int, int>& different_cardinal, vector<Score>& films_scores)
+void order_films_by_restr(vector<pair<int, int>>& films_by_restr)
 {
-    vector<pair<int, int>> films_by_restr(num_films);
+    films_by_restr = vector<pair<int, int>>(num_films);
     for (int i = 0; i < Inc.size(); ++i) {
         films_by_restr[i] = { i, Inc[i].size() };
-        ++different_cardinal[Inc[i].size()];
     }
     sort(films_by_restr.begin(), films_by_restr.end(), compare_by_restr);
-
-    films_scores.push_back({ films_by_restr[0].second, 1, 0.0 });
-    for (int j = 1; j < num_films; ++j) {
-        if (films_by_restr[j].second == films_scores.back().num_restr) {
-            ++films_scores.back().cardinal;
-        } else {
-            films_scores.push_back({ films_by_restr[j].first, 1, 0.0 });
-        }
-    }
-
-    int s = (films_scores.back().num_restr == 0 ? films_scores.size() - 1 : films_scores.size());
-    double limit_block = (s > 5 ? (s / 5) : 1);
-    double major_prob = (s > 5 ? (1 / (5 / 2.0)) : (1 / ((s + 1) / 2.0)));
-    //prob = 1 / ((s·(s+1)/2)/s) = 1 / (3/3 + 2/3 + 1/3) - no posem s + 1 perquè no considerem el bloc amb 0 restriccions
-    double block = 5;
-    for (int j = 0; j < s; ++j) {
-        if (j > int(limit_block)) {
-            --block;
-            limit_block += s / 5;
-        }
-        films_scores[j].probability = major_prob * (block / 5);
-    }
-
-    return films_by_restr;
 }
 
-void print_projection(const vector<fd>& perm)
+void funct(vector<Score>& films_scores, const vector<pair<int, int>>& films_by_restr, vector<BlockInfo>& v)
 {
-    ofstream output(output_file);
-    output << setprecision(1) << fixed;
-    elapsed_time = (clock() - start) / (double)CLOCKS_PER_SEC;
-
-    output << elapsed_time << endl
-           << shortest_festival << endl;
-    cout << shortest_festival << endl;
-
-    // looks across the vector "perm" to print those films that match with the day. Cinema rooms
-    // are choosen arbitarily
-    for (int day = 1; day < num_films; ++day) {
-        int r = 0; //room in where a film will be projected
-        for (int f = 0; f < num_films; ++f) {
-            if (perm[f].second == day) {
-                output << billboard[perm[f].first] << " " << perm[f].second
-                       << " " << cinema_rooms[r] << endl;
-                ++r;
+    /*
+    for (auto e : films_by_restr) {
+        cout << e.first << " " << e.second << endl;
+    }
+    cout << "......................................................." << endl;*/
+    films_scores.push_back({ films_by_restr[0].second, 1, 0.0 }); //afegim nombre pelis amb que està prohibida, quantes pelis d'aquest tipus
+    for (int j = 1; j < num_films; ++j) {
+        if(films_by_restr[j].second != 0){ //discriminem els que no tenen restriccions
+            if (films_by_restr[j].second == films_scores.back().num_restr) { //ja estava afegit un element amb k restriccions
+                ++films_scores.back().cardinal;
+            } else {
+                films_scores.push_back({ films_by_restr[j].second, 1, 0.0 });
             }
         }
     }
-    output.close();
+
+    int s = int(films_scores.size()); //si tenim elements amb 0 restriccions els obviem
+    double limit_block = (s > 5 ? (s / 5) : 1); //el límit del primer block comença en s/5
+    double denom = 32 - pow(2, (4 - (s > 5 ? 4 : s - 1)));
+    //cout << "pow " << pow(2,(4 - (s > 5 ? 4 : s - 1))) << endl;
+    //cout << "denominator is : " << denom << endl;
+    vector<double> probs = {16/denom, 8/denom, 4/denom, 2/denom, 1/denom}; //en cas que hi hagin menys de 5 blocs, els últims tindran una probabilitat però no els usarem, sinó PROB > 1
+    double prob_accumulated = probs[0];
+    v.push_back({0, 0.0}); //representa el 1r bloc, com a mínim sempre hi haurà un
+    for (int j = 0, block = 1; j < s; ++j) { //associem una probabilitat als 5 blocs del vector
+        if (int(v.size()) < 5 and j >= int(limit_block)) { //hem passat al següent block, restringim < 4 pq si el bloc coincideix al final, afegeix 5 separadors
+            v.push_back({int(limit_block), prob_accumulated}); //guardem iterador a la posició on hi ha un break. Ha d'haver 4 o menys sempre, ja que volem que com a màxim hi hagi 5 blocs diferents
+            prob_accumulated += probs[block];
+            limit_block += s / 5; //si s/5 és 0 vol dir que tenim menys de 5 elements i cada block estarà format per un sol element
+            ++block;
+        }
+        films_scores[j].probability = prob_accumulated; // a mesura que abancem en els blocks, la probabilitat és més petita
+    }
+    /*
+     cout << "EL VECTOR DE PROBS RESULTANT ÉS --> ";
+    for(auto e : v) cout << e.cdf << "  ";
+    cout << endl;
+    cout << "mida s : " << s << endl;
+    cout << "vector of probs: " << endl;
+    for(int k = 0; k <= v.size(); ++k){cout << v[k] << ' ';}
+    cout << endl << endl;*/
 }
 
-int set_random_seed(const vector<Score>& films_scores)
+
+double set_random_seed()
 {
-    double p = (double)rand() / (double)RAND_MAX;
+    return (double)rand() / (double)RAND_MAX;
+}
+
+//donat una probabilitat aleatòria retorna l'iterador en el vector que determina quin és el primer element per generar a partir d'allà
+int position_to_start_at(double film_seed, const vector<BlockInfo>& v, const vector<Score>& films_scores){
+    /*cout << " v " << endl;
+    for(auto e : v) cout << e.starting << "  ";
+    cout << endl;*/
+    int i_block = 1;
+    while(i_block != v.size() and film_seed > v[i_block].cdf){  //la posició i_block = 0 no ens fa falta
+        ++i_block;        
+        //cout << "comparem - " << film_seed << " > " << v[i_block].cdf << endl;
+    }
+    return v[i_block - 1].starting;
 }
 
 void optimal_billboard_schedule()
 {
     vector<fd> perm(num_films); //contains a partial solution
     vector<bool> used(num_films, false);
-    map<int, int> different_cardinal; //primer element = nombre de restriccions, segon element = nombre d'elements que tenen el nombre de restriccions igual a la clau
-    vector<Score> films_scores; //vector mida = diccionari = nombre de blocs de restriccions diferents que hi ha
-    vector<pair<int, int>> films_by_restr = order_films_by_restr(different_cardinal, films_scores);
+    //primer element = nombre de restriccions, segon element = nombre d'elements que tenen el nombre de restriccions igual a la clau
+    vector<pair<int, int>> films_by_restr;
+    order_films_by_restr(films_by_restr);
 
-    /*
-    cout << "scores: " << endl;
+    MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
+    //row simulate days of projection; columns are the films' index; an entry of the matrix contains
+    //the amount of retrictions of a film to be projected on that day
+    vector<int> occupied_rooms(num_films + 1, 0);
+    //occupied_rooms[k] = number of projecting room at day 'k'
+    //the two elements above skip the first row/position to avoid problems with zero-indexation
+
+    vector<Score> films_scores; //vector mida = diccionari = nombre de blocs de restriccions diferents que hi ha
+    vector<BlockInfo> v;
+    funct(films_scores, films_by_restr, v);
+    /*cout << "scores: " << endl;
     for (auto e : films_scores) {
         cout << "block: " << e.num_restr << " cardinal: " << e.cardinal << " probability: " << e.probability << endl;
     }
@@ -187,15 +235,13 @@ void optimal_billboard_schedule()
     cout << "total: " << count << endl;
     cout << "total films: " << num_f << endl;*/
 
-    MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
-    //row simulate days of projection; columns are the films' index; an entry of the matrix contains
-    //the amount of retrictions of a film to be projected on that day
-    vector<int> occupied_rooms(num_films + 1, 0);
-    //occupied_rooms[k] = number of projecting room at day 'k'
-    //the two elements above skip the first row/position to avoid problems with zero-indexation
-    while (true) {
-        int film_seed = set_random_seed(films_scores);
-        generate_schedule(0, perm, used, films_by_restr, prohibitions_per_day, occupied_rooms, 1);
+    srand(time(NULL)); //set a seed according to the current time
+    for(int k = 0; k < 5; ++k) {
+        double film_seed = set_random_seed();
+        cout << "La llavor és: " << film_seed << endl;
+        int inici_generacio = position_to_start_at(film_seed, v, films_scores);
+        cout << inici_generacio << endl;
+        //generate_schedule(0, perm, used, films_by_restr, prohibitions_per_day, occupied_rooms, 1);
     }
 }
 
