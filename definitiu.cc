@@ -22,7 +22,7 @@ double elapsed_time;
 
 int num_films, num_preferences, num_rooms;
 int shortest_festival = INT_MAX; //simulates infinite value
-int min_required_lenght = ceil(float(num_films) / float(num_rooms));
+int min_required_lenght;
 
 vector<string> billboard, cinema_rooms;
 ALI Inc; // stores the Incompatibilities among films that can't be projected in the same day
@@ -170,7 +170,7 @@ void generate_schedule(int k, vector<fd>& perm, vector<bool>& used,
     } else {
         for (int day = 1; day <= lenght_festival; ++day) {
             const int film = films_by_rest[k].first;
-            bool film_is_projected = false;
+            bool film_is_projected = false; //no fa falta, el used, ja fa la funció
             if (not used[film] and lenght_festival < shortest_festival) {
                 if (can_be_fit(prohibitions_per_day, occupied_rooms, film, day)) {
                     used[film] = true;
@@ -205,7 +205,9 @@ void optimal_billboard_schedule()
     //occupied_rooms[k] = number of projecting room at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
 
+    min_required_lenght = ceil(float(num_films) / float(num_rooms));
     generate_schedule(0, perm, used, films_by_rest, prohibitions_per_day, occupied_rooms, 1);
+    cout << min_required_lenght << endl;
 }
 
 int main(int argc, char* argv[])

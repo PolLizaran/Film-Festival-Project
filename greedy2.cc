@@ -152,13 +152,12 @@ films_by_rest = vector de pelis ordenades per nombre de restriccions, el primer 
 prohibitions_per_day = matriu de restriccions que diu en el j-èssim dia quines pelis estan prohibides
 occupied_rooms = nombre de sales ocupades en el k-èssim dia
 */
-void generate_schedule(vector<fd>& perm, vector<bool>& used,
-    const vector<pair<int, int>>& films_by_rest, MI& prohibitions_per_day,
-    vector<int>& occupied_rooms, int lenght_festival)
+void generate_schedule(vector<fd>& perm, const vector<pair<int, int>>& films_by_rest, 
+    MI& prohibitions_per_day, vector<int>& occupied_rooms, int lenght_festival)
 {
         for (int k = 0; k < num_films; ++k) {
             const int film = films_by_rest[k].first;
-            bool film_is_projected = false;
+            bool film_is_projected = false; //crec que sobra
             for(int day = 1; day <= lenght_festival and not film_is_projected; ++day){
                 if (can_be_fit(prohibitions_per_day, occupied_rooms, film, day)) {
                     film_is_projected = true;
@@ -187,7 +186,7 @@ void optimal_billboard_schedule()
     //occupied_rooms[k] = number of projecting room at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
 
-    generate_schedule(perm, used, films_by_rest, prohibitions_per_day, occupied_rooms, 1);
+    generate_schedule(perm, films_by_rest, prohibitions_per_day, occupied_rooms, 1);
 }
 
 int main(int argc, char* argv[])
