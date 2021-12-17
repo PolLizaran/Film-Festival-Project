@@ -1,17 +1,16 @@
 0.0
 22
 film37 1 cinema1
-film4 1 cinema2
 film30 2 cinema1
-film14 2 cinema2
+film5 2 cinema2
 film22 3 cinema1
-film9 3 cinema2
+film3 3 cinema2
 film31 4 cinema1
 film12 4 cinema2
 film34 5 cinema1
 film13 5 cinema2
 film38 6 cinema1
-film10 6 cinema2
+film6 6 cinema2
 film40 7 cinema1
 film8 7 cinema2
 film21 8 cinema1
@@ -19,7 +18,7 @@ film42 8 cinema2
 film35 9 cinema1
 film18 9 cinema2
 film36 10 cinema1
-film16 10 cinema2
+film14 10 cinema2
 film26 11 cinema1
 film1 11 cinema2
 film32 12 cinema1
@@ -29,17 +28,18 @@ film39 13 cinema2
 film43 14 cinema1
 film20 14 cinema2
 film17 15 cinema1
-film7 15 cinema2
+film16 15 cinema2
 film23 16 cinema1
 film24 16 cinema2
 film28 17 cinema1
-film6 17 cinema2
+film9 17 cinema2
 film41 18 cinema1
-film11 18 cinema2
+film4 18 cinema2
 film25 19 cinema1
-film29 19 cinema2
+film11 19 cinema2
 film27 20 cinema1
-film19 21 cinema1
-film2 21 cinema2
-film3 22 cinema1
-film5 22 cinema2
+film10 20 cinema2
+film29 21 cinema1
+film7 21 cinema2
+film19 22 cinema1
+film2 22 cinema2

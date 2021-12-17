@@ -14,4 +14,3 @@ film5 3 cinema3
 film7 3 cinema4
 film11 4 cinema1
 film4 4 cinema2
-film6 4 cinema3

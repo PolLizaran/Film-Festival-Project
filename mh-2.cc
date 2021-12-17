@@ -269,6 +269,7 @@ int choose_day_to_fit(const MI& prohibitions_per_day, const vector<int>& occupie
     }
 }
 
+//fer un greedy normal, però
 void generate_schedule(vector<fd> perm, const vector<pair<int, int>>& films_by_rest, 
     MI prohibitions_per_day, vector<int> occupied_rooms, const vector<BlockInfo>& cuttings, int index_at_start, 
     int lenght_festival, int start_point, const vector<Score>& films_scores)
@@ -367,6 +368,7 @@ void optimal_billboard_schedule()
          //all films have been placed
 
         //cout << start_point << endl;
+
         generate_schedule(perm, films_by_restr, prohibitions_per_day, occupied_rooms, cuttings, index_at_start, 1, start_point, films_scores);
         //cout << shortest_festival << " SF != MR " << min_required_lenght << endl;
     }
