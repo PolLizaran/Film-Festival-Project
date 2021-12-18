@@ -202,12 +202,11 @@ void optimal_billboard_schedule()
     //row simulate days of projection; columns are the films' index; an entry of the matrix contains
     //the amount of retrictions of a film to be projected on that day
     vector<int> occupied_rooms(num_films + 1, 0);
-    //occupied_rooms[k] = number of projecting room at day 'k'
+    //occupied_rooms[k] = number of projecting rooms at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
 
     min_required_lenght = ceil(float(num_films) / float(num_rooms));
     generate_schedule(0, perm, used, films_by_rest, prohibitions_per_day, occupied_rooms, 1);
-    cout << min_required_lenght << endl;
 }
 
 int main(int argc, char* argv[])
