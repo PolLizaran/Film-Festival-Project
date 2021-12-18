@@ -197,49 +197,30 @@ double set_random_seed()
 
 //donat una probabilitat aleatòria retorna l'iterador en el vector que determina quin és el primer element per generar a partir d'allà
 int position_to_start_at(double film_seed, const vector<BlockInfo>& v, const vector<Score>& films_scores, int& index_at_start){
-    /*cout << " v " << endl;
-    for(auto e : v) cout << e.starting << "  ";
-    cout << endl;*/
     int i_block = 1;
     while(i_block != v.size() and film_seed > v[i_block].cdf){  //la posició i_block = 0 no ens fa falta
         ++i_block;  
-        //cout << "mida i_block: " << i_block << "   ,  mida vect " << v.size() << endl;  
-
-        //cout << "comparem - " << film_seed << " > " << v[i_block].cdf << endl;
     }
     index_at_start = i_block - 1;
-    //cout << "   ,  index_at_start: " << i_block - 1 << endl;
     return v[index_at_start].starting;
 }
 
 //referenciem legth_festival per si al final el canviem 
-void add_zero_films(vector<int>& occupied_rooms, vector<fd>& perm_0, 
+void add_zero_films(vector<int>& occupied_rooms, vector<fd>& perm, 
     const vector<pair<int, int>>& films_by_rest, int& length_festival) //afegir les pelis que no tenen restriccions i que per tant poden anar en qualsevol dia
 {
-    /*cout << "escrivim perm: " << endl;
-    for (auto x : perm_0) {
-        cout << x.first << " " << x.second << endl;
-    }
-    cout << endl;*/
-
     int fbr_idx_film = int(films_by_rest.size()) - num_films_without_restr;
-    //cout << "fbr_idx_film: " << fbr_idx_film << "   ";
     int day = 1;
-    while(fbr_idx_film < films_by_rest.size()) {
-        //cout << " fbr_idx " << fbr_idx_film << endl;
+    int i = films_by_rest.size() - 1;
+    while(fbr_idx_film < int(films_by_rest.size())) {
         if (occupied_rooms[day] < num_rooms) {
-            //cout << "   day: " << day << "  ,  ocuppied: " << occupied_rooms.size() << endl; 
-           /* cout << "dins" << endl;
-            cout << "film_restr: " << films_by_rest[fbr_idx_film].first << endl;
-            cout <<  "av: " << perm_0[fbr_idx_film].first << ' ' << perm_0[fbr_idx_film].second << endl;
-            perm_0.push_back({films_by_rest[fbr_idx_film].first, day});*/
             ++fbr_idx_film;
             ++occupied_rooms[day];
-            //cout <<  "dv: " << perm_0.back().first << ' ' << perm_0.back().second << endl;
+            perm.push_back({films_by_rest[i].first, day});
+            --i; //Mirar si es pot fer sense declarar una nova var.
         } else {
             ++day;
         }
-        //cout <<  "v: " << perm_0[fbr_idx_film].first << ' ' << perm_0[fbr_idx_film].second << endl;
     }
     if (day > length_festival) length_festival = day;
 }
@@ -264,62 +245,53 @@ int choose_day_to_fit(const MI& prohibitions_per_day, const vector<int>& occupie
         ++lenght_festival;
         return lenght_festival;
     }else{
-        int random_day = rand() % (candidates.size() - candidates.size()/2);
-        return candidates[random_day]; //retorna una dia aleatori en què posar la peli sobre els que teníem disponibles
+        int elapsed_time2 = (clock() - start) / (double)CLOCKS_PER_SEC; 
+        int y = candidates.size()/2;
+        if(elapsed_time2 > 15) y = 0; //Si han passat 20 segons, generem el dia random sense tenir en compte la meitat millors
+        int random_restricted_candidate = rand() % (candidates.size() - y);
+        return candidates[random_restricted_candidate]; //retorna una dia aleatori en què posar la peli sobre els que teníem disponibles
     }
 }
 
 //fer un greedy normal, però
-void generate_schedule(vector<fd> perm, const vector<pair<int, int>>& films_by_rest, 
+void randomized_greedy(vector<fd> perm, const vector<pair<int, int>>& films_by_rest, 
     MI prohibitions_per_day, vector<int> occupied_rooms, const vector<BlockInfo>& cuttings, int index_at_start, 
     int lenght_festival, int start_point, const vector<Score>& films_scores)
 {
-
-    //S'HA DE FER QUE COMENCI A GENERAR PEL PUNT QUE DIGUEM I ES VAGIN "SALTANT" POSICIONS
+    //mirar si surt a compte declarar vector perm dins
     int films_being_projected = 0;
-    bool first = true;
-    //cout << "num_films_without_restr: " << num_films_without_restr << endl;
+    bool first_block = true;
+    vector<bool> used (num_films);
     while (films_being_projected < num_films - num_films_without_restr and lenght_festival < shortest_festival){
         for (int i = start_point; i < cuttings[index_at_start + 1].starting; ++i) { //lineal respecte nombre de pelis
             const Score& R = films_scores[i];
             for (int k = R.first_idx; k < R.first_idx + R.cardinal; ++k) {
-                const int film = films_by_rest[k].first;
-                int day = choose_day_to_fit(prohibitions_per_day, occupied_rooms, film, lenght_festival);
-                perm[k] = {film, day}; 
-                ++occupied_rooms[day];
-                propagate_restrictions(day, prohibitions_per_day, film, 1);
-                ++films_being_projected;
+                if(not used[k]){
+                    const int film = films_by_rest[k].first;
+                    int day = choose_day_to_fit(prohibitions_per_day, occupied_rooms, film, lenght_festival);
+                    perm[k] = {film, day}; 
+                    ++occupied_rooms[day];
+                    used[k] = true;
+                    propagate_restrictions(day, prohibitions_per_day, film, 1);
+                    ++films_being_projected;
+                }
             } 
         }
-        /*
-        cout << "Not yet: index_at_start, start point: " << index_at_start << ' ' << start_point << endl;
-        */
-        if(first){
+        //mirar d'implementar funció INCREMENTAR_INDEX
+        if(first_block){
             index_at_start = 0;
-            first = false;
+            first_block = false;
         }else{
             index_at_start = index_at_start + 1;
             if(cuttings[index_at_start].starting == P) index_at_start = 0;//hem arribat al final del vector
-            //% (int(cuttings.size())); //d'aquesta manera, quan arribem al final, torna a l'inici  
         }
         start_point = cuttings[index_at_start].starting;
-        //cout << "Passa: index_at_start, start point: " << index_at_start << ' ' << start_point << endl;
-        //++index_at_start;
-        //if(index_at_start == cuttings.size()) index_at_start = 0;
-        /*cout << "A: index_at_start " << index_at_start << "  cuttings.size()" << cuttings.size() << endl;
-        start_point = cuttings[index_at_start].starting;
-        cout << "D: start point: " << start_point << endl;*/
     }
-    //cout << "ABANS D'ENTRAR A ZERO FILMS";
     add_zero_films(occupied_rooms, perm, films_by_rest, lenght_festival);
-    //cout << "DESPRÉS D'ENTRAR A ZERO FILMS";
-    /*cout << endl;
-        for(auto x: perm) cout << x.first;
-        cout << endl;*/
     if (lenght_festival < shortest_festival) {
         shortest_festival = lenght_festival;
         print_projection(perm);
-   }
+    }
 }
 
 void optimal_billboard_schedule()
@@ -333,44 +305,21 @@ void optimal_billboard_schedule()
     //row simulate days of projection; columns are the films' index; an entry of the matrix contains
     //the amount of retrictions of a film to be projected on that day
     vector<int> occupied_rooms(num_films + 1, 0);
-    //occupied_rooms[k] = number of projecting room at day 'k'
+    //occupied_rooms[k] = number of projecting rooms at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
 
     vector<Score> films_scores; //vector mida = diccionari = nombre de blocs de restriccions diferents que hi ha
     vector<BlockInfo> cuttings;
     funct(films_scores, films_by_restr, cuttings);
     vector<fd> perm(num_films - num_films_without_restr); //contains a partial solution
-    /*cout << "scores: " << endl;
-    for (auto e : films_scores) {
-        cout << "block: " << e.num_restr << " cardinal: " << e.cardinal << " probability: " << e.probability << endl;
-    }
-
-    cout << "diccionari:" << endl;
-    int count = 0;
-    int num_f = 0;
-    for (auto e : different_cardinal) {
-        cout << e.first << " " << e.second << endl;
-        count += e.first * e.second;
-        num_f += e.second;
-    }
-    cout << "total: " << count << endl;
-    cout << "total films: " << num_f << endl;*/
+    
     min_required_lenght = ceil(float(num_films) / float(num_rooms));
     srand(time(NULL)); //set a seed according to the current time
     while(shortest_festival != min_required_lenght){ //funciona com un while True, l'únic que en cas de trobar la òptima para
         double film_seed = set_random_seed(); //cout << "La llavor és: " << film_seed << endl;
-        //cout << "seed: " << film_seed << "  ";
         int index_at_start = UNDEF;
         int start_point = position_to_start_at(film_seed, cuttings, films_scores, index_at_start); //és l'índex del vector films_scores on comença el bloc on començarem a generar
-        //cout << "index_at_start, start point: " << index_at_start << ' ' << start_point << endl;
-        //for(auto x: cuttings) cout << x.starting << "  ";
-        //cout << endl;
-         //all films have been placed
-
-        //cout << start_point << endl;
-
-        generate_schedule(perm, films_by_restr, prohibitions_per_day, occupied_rooms, cuttings, index_at_start, 1, start_point, films_scores);
-        //cout << shortest_festival << " SF != MR " << min_required_lenght << endl;
+        randomized_greedy(perm, films_by_restr, prohibitions_per_day, occupied_rooms, cuttings, index_at_start, 1, start_point, films_scores);
     }
 }
 
