@@ -130,9 +130,9 @@ void print_projection(const vector<fd>& perm)
 
     // looks across the vector "perm" to print those films that match with the day. Cinema rooms
     // are choosen arbitrarily
-    for (int day = 1; day < num_films; ++day) {
+    for (int day = 1; day <= num_films; ++day) {
         int r = 0; //room in where a film will be projected
-        for (int f = 0; f < num_films; ++f) {
+        for (int f = 0; f < num_films; ++f) { //f = films
             if (perm[f].second == day) {
                 output << billboard[perm[f].first] << " " << perm[f].second
                        << " " << cinema_rooms[r] << endl;
@@ -221,8 +221,8 @@ Args:
 */
 void propagate_restrictions(int day, MI& prohibitions_per_day, int film, int modifier)
 {
-    for (const int& x : Inc[film])
-        prohibitions_per_day[day][x] += modifier;
+    for (const int& banned_film : Inc[film])
+        prohibitions_per_day[day][banned_film] += modifier;
 }
 
 void idx_increment(const vector<BlockInfo>& cuttings, bool& first_block, int& index_at_start, int& start_point){
@@ -266,7 +266,7 @@ void randomized_greedy(const vector<pair<int, int>>& films_by_rest, const vector
     vector<bool> used (num_films);
     vector<fd> perm(num_films - num_films_without_restr); //contains a partial solution
     MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
-    //row simulate days of projection; columns are the films' index; an entry of the matrix contains
+    //rows simulate days of projection; columns are the films' index; an entry of the matrix contains
     //the amount of retrictions of a film to be projected on that day
     vector<int> occupied_rooms(num_films + 1, 0);
     //occupied_rooms[k] = number of projecting rooms at day 'k'

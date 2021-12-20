@@ -106,7 +106,6 @@ void print_projection(const vector<fd>& perm, int lenght_festival)
 
     output << elapsed_time << endl
            << lenght_festival << endl;
-    cout << lenght_festival << endl;
 
     // looks across the vector "perm" to print those films that match with the day. Cinema rooms
     // are choosen arbitrarily
