@@ -113,7 +113,7 @@ void print_projection(const vector<fd>& perm)
     cout << shortest_festival << endl;
 
     // looks across the vector "perm" to print those films that match with the day. Cinema rooms
-    // are choosen arbitarily
+    // are choosen arbitrarily
     for (int day = 1; day < num_films; ++day) {
         int r = 0; //room in where a film will be projected
         for (int f = 0; f < num_films; ++f) {
