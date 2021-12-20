@@ -33,13 +33,13 @@ void read_films(ifstream& input)
     billboard = vector<string>(num_films);
     for (int i = 0; i < num_films; ++i) {
         input >> billboard[i];
-        filmindex.insert({ billboard[i], i });
+        filmindex.insert({ billboard[i], i }); 
     }
 }
 
 /*
 Works on:
-    Fills the global adjacency list variable "Incompatibilities". Those films that are forbiden to be
+    Fills the global adjacency list variable "Incompatibilities". Those films that are forbiden to be 
     projected together are added in both films' lists.
 */
 void read_incompatibilities(ifstream& input)
@@ -124,9 +124,9 @@ void print_projection(const vector<fd>& perm, int lenght_festival)
 
 /*
 Returns:
-    Whether a film can be projected in a day checking its restrictions and the emptyness of the rooms.
+    Whether a film can legaly be assigned to a day checking its restrictions and the emptyness of the rooms.
 */
-bool can_be_fit(const MI& prohibitions_per_day, const vector<int>& occupied_rooms, int film, int day)
+bool can_be_projected(const MI& prohibitions_per_day, const vector<int>& occupied_rooms, int film, int day)
 {
     return prohibitions_per_day[day][film] == 0 and occupied_rooms[day] < num_rooms;
 }
@@ -136,34 +136,34 @@ Args:
     - modifier: takes value 1 for adding prohibitions in the "day" where "film" is projected
                 takes value -1 analogously for removing prohibitions
 */
-void propagate_restrictions(int day, MI& prohibitions_per_day, int film, int modifier)
+void propagate_restrictions(MI& prohibitions_per_day, int day, int film, int modifier)
 {
     for (const int& banned_film : Inc[film])
         prohibitions_per_day[day][banned_film] += modifier;
 }
 
-/*
+/* 
 Works on:
-    Searches a configuration of the cinema festival, that enables all films to be projected, taking
-    into account the restrictions among others and following a greedy strategy. This means it will
-    not always be an optimal solution. It iterates througout the vector of films ordered by their
-    number of restrictions and assign them in the first day where can be projected. In case a film
+    Searches a configuration of the cinema festival, that enables all films to be projected, taking 
+    into account the restrictions among others and following a greedy strategy. This means it will 
+    not always be an optimal solution. It iterates througout the vector of films ordered by their 
+    number of restrictions and assign them in the first day where can be projected. In case a film 
     could not be assigned to a day, festival's lenght is increased as the film will need an extra day.
 */
-void generate_greedy_schedule(const vector<pair<int, int>>& films_by_rest, vector<fd>& perm,
+void generate_greedy_schedule(const vector<pair<int, int>>& films_by_rest, vector<fd>& perm, 
                               vector<int>& occupied_rooms, MI& prohibitions_per_day)
 {
     int lenght_festival = 1; //current days spent on the festival
     for (int k = 0; k < num_films; ++k) {
         const int film = films_by_rest[k].first;
-        bool film_is_projected = false; //boolean for each k-th film
-        for(int day = 1; day <= lenght_festival and not film_is_projected; ++day){
-            if (can_be_fit(prohibitions_per_day, occupied_rooms, film, day)) {
+        bool film_is_projected = false; //boolean for each k-th film 
+        for(int day = 1; day <= lenght_festival and not film_is_projected; ++day){ 
+            if (can_be_projected(prohibitions_per_day, occupied_rooms, film, day)) {
                 film_is_projected = true;
                 ++occupied_rooms[day];
                 perm[k] = { film, day };
-                propagate_restrictions(day, prohibitions_per_day, film, 1);
-            } else if (day == lenght_festival) { //the film could not be projected yet
+                propagate_restrictions(prohibitions_per_day, day, film, 1);
+            } else if (day == lenght_festival) { //the film could not yet be projected
                 ++lenght_festival;
                 perm[k] = { film, lenght_festival }; //assign the film to that extra day
             }
