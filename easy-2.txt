@@ -1,4 +1,0 @@
-0.0
-2
-film3 1 cinema1
-film4 2 cinema1
