@@ -128,11 +128,11 @@ vector<pair<int, int>> order_films_by_restr()
 /*
 Returns:
     A vector containing information about films with the same "num_restr". It also modifies the global 
-    variable that counts those films without restrictions, that are free to be projected anywhere. Those
-    films that achieve "num_restr" = 0 are not added in the vector.
+    variable that counts those films without restrictions, that are free to be projected anywhere. 
+    Films that achieve "num_restr" = 0 are not added in the vector.
 */
 vector<Score> agrupate_by_restrictions(const vector<pair<int, int>>& films_by_restr){
-    //remind that "films_by_restr" contains: <film, num_restr>
+    //remind that "films_by_restr" contains (<film, num_restr>) ordered by number of restrictions
     num_films_without_restr = 0;
     vector<Score> films_scores;
     films_scores.push_back({ films_by_restr[0].second, 1, 0}); //(<num_rest, cardinal, first_idx>)
@@ -155,7 +155,7 @@ Returns:
     A vector containing the start index and the probability of each block (minimum 1 and maximum 5). 
     It will have two more elements according to stard or end extreme for the first or last block.
 */
-vector<BlockInfo> blocks_probabilities(const vector<pair<int, int>>& films_by_restr, int fs_size)
+vector<BlockInfo> blocks_probabilities(int fs_size)
 {
     vector<BlockInfo> cuttings;
     cuttings.push_back({0, 0.0}); //representa el 1r bloc, com a mínim sempre hi haurà un
@@ -200,20 +200,31 @@ void print_projection(const vector<fd>& perm)
     output.close();
 }
 
-int choose_day_from_RCL(const MI& prohibitions_per_day, const vector<int>& occupied_rooms, int film, int& lenght_festival){
+/*
+Returns:
+    A semi-random day to project a given film. During the selection process, it generates a vector of all 
+    the candidate days, checking up possible forbiddings. At the beggining of the execution of the program, 
+    not all days are available for projection in order to narrow down the first festival schedule duration.
+    Once the program has been runnning for 15 seconds, all the days on the vector are available to be 
+    choosen to introduce even more randomness to the heuristic. 
+*/
+int choose_day_from_RCL(const MI& prohibitions_per_day, const vector<int>& occupied_rooms, int film, 
+                        int& lenght_festival){
     vector<int> candidates;
     for(int day = 1; day <= lenght_festival; ++day){
-        if(prohibitions_per_day[day][film] == 0 and occupied_rooms[day] < num_rooms) candidates.push_back(day);
+        //no prohibitions and enough free rooms 
+        if(prohibitions_per_day[day][film] == 0 and occupied_rooms[day] < num_rooms) 
+            candidates.push_back(day);
     }
-    if (candidates.size() == 0){
+    if (candidates.size() == 0){ //none compatible days found to project the films, an extra day is needed
         ++lenght_festival;
         return lenght_festival;
     }else{
-        int restricted_days = candidates.size()/2;
+        int restricted_days = candidates.size()/2; 
         int elapsed_time2 = (clock() - start) / (double)CLOCKS_PER_SEC;
-        if(elapsed_time2 > 15) restricted_days = 0; //Si han passat 15 segons, generem el dia random sense tenir en compte la meitat millors
+        if(elapsed_time2 > 15) restricted_days = 0; 
         int random_restricted_candidate = rand() % (candidates.size() - restricted_days);
-        return candidates[random_restricted_candidate]; //retorna una dia aleatori en què posar la peli sobre els que teníem disponibles
+        return candidates[random_restricted_candidate]; 
     }
 }
 
@@ -228,33 +239,45 @@ void propagate_restrictions(int day, MI& prohibitions_per_day, int film, int mod
         prohibitions_per_day[day][banned_film] += modifier;
 }
 
-void idx_increment(const vector<BlockInfo>& cuttings, bool& first_block, int& index_at_start, int& start_point){
+/*
+Works on:
+    Actualizes both "index_at_start" and "start_point" in order to keep generating for the following block.
+    As the generation goes from one block to another, accesses to unexisting vector positions are checked.
+*/
+void idx_increment(const vector<BlockInfo>& cuttings, bool& first_block, int& index_at_start, 
+                   int& start_point){
     if(first_block){
-            index_at_start = 0;
-            first_block = false;
+        index_at_start = 0; //return to beginning
+        first_block = false;
     }else{
-        index_at_start = index_at_start + 1;
-        if(cuttings[index_at_start].starting == num_unequal_restr) index_at_start = 0;//hem arribat al final del vector
+        ++index_at_start;
+        if(cuttings[index_at_start].starting == num_unequal_restr) //end of the vector has been reached 
+            index_at_start = 0;
     }
     start_point = cuttings[index_at_start].starting;
 }
 
-//referenciem legth_festival per si al final el canviem
-void add_zero_films(const vector<pair<int, int>>& films_by_rest, vector<int>& occupied_rooms, vector<fd>& perm,
-                    int& length_festival) //afegir les pelis que no tenen restriccions i que per tant poden anar en qualsevol dia
+/*
+Works on:
+    Fills the vector of the planning (perm), with those films that are not forbidden with other films
+    and that by consequence can be projected in any room that is free. It also modifies the length_festival
+    whenever extra days are required to project the films.
+*/
+void add_zero_films(const vector<pair<int, int>>& films_by_restr, vector<int>& occupied_rooms, 
+                    vector<fd>& perm, int& length_festival) 
 {
-    int fbr_idx_film = int(films_by_rest.size()) - num_films_without_restr;
     int day = 1;
-    int i = films_by_rest.size() - 1;
-    while(fbr_idx_film < int(films_by_rest.size())) {
-        if (occupied_rooms[day] < num_rooms) {
+    int fbr_idx_film = int(films_by_restr.size()) - num_films_without_restr; 
+    //initially takes the index of first film with "num_restr = 0"
+
+    int zero_film = films_by_restr.size() - 1; //starts from the very last film in the vector "films_by_restr"
+    while(fbr_idx_film < int(films_by_restr.size())) { //loop for all zero films
+        if (occupied_rooms[day] < num_rooms) { 
             ++fbr_idx_film;
             ++occupied_rooms[day];
-            perm.push_back({films_by_rest[i].first, day});
-            --i; //Mirar si es pot fer sense declarar una nova var.
-        } else {
-            ++day;
-        }
+            perm.push_back({films_by_restr[zero_film].first, day});
+            --zero_film;
+        } else ++day; //could not be projected
     }
     if (day > length_festival) length_festival = day;
 }
@@ -281,9 +304,10 @@ void randomized_greedy(const vector<pair<int, int>>& films_by_rest, const vector
     //occupied_rooms[k] = number of projecting rooms at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
 
+    //mirar de posar en comptes de num_films - num_films_without_restr, fer-ho amb perm.size()
     while (films_being_projected < num_films - num_films_without_restr and lenght_festival < shortest_festival) {
         for (int i = start_point; i < cuttings[index_at_start + 1].starting; ++i) { //lineal respecte nombre de pelis
-            const Score& R = films_scores[i];
+            const Score& R = films_scores[i]; //canviar variable R
             for (int k = R.first_idx; k < R.first_idx + R.cardinal; ++k) {
                 if(not used[k]){
                     used[k] = true;
@@ -313,10 +337,11 @@ double set_random_seed()
 //*donat una probabilitat aleatòria retorna l'iterador en el vector que determina quin és el primer element per generar a partir d'allà
 /*
 Works on:
-    Given a arbitrarily probability ("films_seed"), updates both first block's index and first "num_restr" 
+    Given a random probability ("films_seed"), updates both first block's index and first "num_restr" 
     to start generating with.
 */
-void position_to_start_at(const vector<BlockInfo>& cuttings, const vector<Score>& films_scores, double film_seed, int& index_at_start, int& start_point){
+void position_to_start_at(const vector<BlockInfo>& cuttings, const vector<Score>& films_scores, 
+                          double film_seed, int& index_at_start, int& start_point){
     int i_block = 1; //position 0 with probability 0 is not needed
     while(i_block != cuttings.size() and film_seed > cuttings[i_block].cdf){  //*la posició i_block = 0 no ens fa falta
         ++i_block;
@@ -333,7 +358,7 @@ void optimal_billboard_schedule()
     int fs_size = int(films_scores.size()); //the size of "films_scores" is the number of different "num_restr" 
     num_unequal_restr = fs_size;
 
-    vector<BlockInfo> cuttings = blocks_probabilities(films_by_restr, fs_size);
+    vector<BlockInfo> cuttings = blocks_probabilities(fs_size);
     min_required_lenght = ceil(float(num_films) / float(num_rooms));
     
     while(shortest_festival != min_required_lenght){ //finishes when the optimal solution has found

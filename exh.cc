@@ -50,7 +50,7 @@ void read_incompatibilities(ifstream& input)
 {
     Inc = ALI(num_films);
     input >> num_preferences;
-    for (uint i = 0; i < num_preferences; ++i) {
+    for (unsigned int i = 0; i < num_preferences; ++i) {
         string a, b;
         input >> a >> b;
         Inc[filmindex[a]].push_back(filmindex[b]);
@@ -62,7 +62,7 @@ void read_cinema_rooms(ifstream& input)
 {
     input >> num_rooms;
     cinema_rooms = vector<string>(num_rooms);
-    for (uint i = 0; i < num_rooms; ++i)
+    for (unsigned int i = 0; i < num_rooms; ++i)
         input >> cinema_rooms[i];
 }
 
