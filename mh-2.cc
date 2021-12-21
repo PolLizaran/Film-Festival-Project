@@ -37,8 +37,8 @@ map<string, int> filmindex; //stores the name of a film and its position in the 
 string output_file;
 /* ------------------------------------------------------------------------------------------------ */
 
-//stores information about those films that have the same numer of restrictions. The criteria of
-//selection during the heuristic will be determine by "num_restr"
+//stores information about those films that have the same number of restrictions. The criteria of
+//selection during the heuristic will be determined by "num_restr"
 struct Score {
     int num_restr;
     int cardinal;
@@ -64,7 +64,7 @@ void read_films(ifstream& input)
 
 /*
 Works on:
-    Fills the global adjacency list variable "Incompatibilities". Those films that are forbiden to be
+    Fills the global adjacency list variable "Incompatibilities". Those films that are forbidden to be
     projected together are added in both films' lists.
 */
 void read_incompatibilities(ifstream& input)
@@ -150,6 +150,11 @@ vector<Score> agrupate_by_restrictions(const vector<pair<int, int>>& films_by_re
     return films_scores;
 }
 
+/*
+Returns:
+    A vector containing the start index and the probability of each block (minimum 1 and maximum 5). 
+    It will have two more elements according to stard or end extreme for the first or last block.
+*/
 vector<BlockInfo> blocks_probabilities(const vector<pair<int, int>>& films_by_restr, int fs_size)
 {
     vector<BlockInfo> cuttings;
@@ -254,15 +259,21 @@ void add_zero_films(const vector<pair<int, int>>& films_by_rest, vector<int>& oc
     if (day > length_festival) length_festival = day;
 }
 
-//fer un greedy normal, però
+/*
+Args:
+    - length_festival: current days spent on the festival
+
+Works on:
+    
+*/
 void randomized_greedy(const vector<pair<int, int>>& films_by_rest, const vector<Score>& films_scores,
-                       const vector<BlockInfo>& cuttings,  int index_at_start, int lenght_festival, int start_point)
+                       const vector<BlockInfo>& cuttings,  int index_at_start, int start_point, int lenght_festival)
 {
-    //mirar si surt a compte declarar vector perm dins
     int films_being_projected = 0;
     bool first_block = true;
+
     vector<bool> used (num_films);
-    vector<fd> perm(num_films - num_films_without_restr); //contains a partial solution
+    vector<fd> perm(num_films - num_films_without_restr); //contains a partial solution (<film, day_of_projection>)
     MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
     //rows simulate days of projection; columns are the films' index; an entry of the matrix contains
     //the amount of retrictions of a film to be projected on that day
@@ -299,14 +310,19 @@ double set_random_seed()
     return (double)rand() / (double)RAND_MAX;
 }
 
-//donat una probabilitat aleatòria retorna l'iterador en el vector que determina quin és el primer element per generar a partir d'allà
-void position_to_start_at(const vector<BlockInfo>& v, const vector<Score>& films_scores, double film_seed, int& index_at_start, int& start_point){
-    int i_block = 1;
-    while(i_block != v.size() and film_seed > v[i_block].cdf){  //la posició i_block = 0 no ens fa falta
+//*donat una probabilitat aleatòria retorna l'iterador en el vector que determina quin és el primer element per generar a partir d'allà
+/*
+Works on:
+    Given a arbitrarily probability ("films_seed"), updates both first block's index and first "num_restr" 
+    to start generating with.
+*/
+void position_to_start_at(const vector<BlockInfo>& cuttings, const vector<Score>& films_scores, double film_seed, int& index_at_start, int& start_point){
+    int i_block = 1; //position 0 with probability 0 is not needed
+    while(i_block != cuttings.size() and film_seed > cuttings[i_block].cdf){  //*la posició i_block = 0 no ens fa falta
         ++i_block;
     }
     index_at_start = i_block - 1;
-    start_point = v[index_at_start].starting;
+    start_point = cuttings[index_at_start].starting;
 }
 
 void optimal_billboard_schedule()
@@ -320,11 +336,12 @@ void optimal_billboard_schedule()
     vector<BlockInfo> cuttings = blocks_probabilities(films_by_restr, fs_size);
     min_required_lenght = ceil(float(num_films) / float(num_rooms));
     
-    while(shortest_festival != min_required_lenght){ //funciona com un while True, l'únic que en cas de trobar la òptima para
-        double film_seed = set_random_seed(); //cout << "La llavor és: " << film_seed << endl;
-        int index_at_start = UNDEF, start_point = UNDEF;
-        position_to_start_at(cuttings, films_scores, film_seed, index_at_start, start_point); //és l'índex del vector films_scores on comença el bloc on començarem a generar
-        randomized_greedy(films_by_restr, films_scores, cuttings, index_at_start, 1, start_point);
+    while(shortest_festival != min_required_lenght){ //finishes when the optimal solution has found
+        double film_seed = set_random_seed(); 
+        int index_at_start = UNDEF; //block's index with which generation will start
+        int start_point = UNDEF; //position of the first "num_restr" used in "films_scores" vector
+        position_to_start_at(cuttings, films_scores, film_seed, index_at_start, start_point); //*és l'índex del vector films_scores on comença el bloc on començarem a generar
+        randomized_greedy(films_by_restr, films_scores, cuttings, index_at_start, start_point, 1);
     }
 }
 
