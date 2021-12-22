@@ -152,26 +152,35 @@ vector<Score> agrupate_by_restrictions(const vector<pair<int, int>>& films_by_re
 
 /*
 Returns:
-    A vector containing the start index and the probability of each block (minimum 1 and maximum 5). 
-    It will have two more elements according to stard or end extreme for the first or last block.
+    A vector containing the starting index and the probability of each block. For this heuristic it was 
+    chosen to split the vector films_scores in 5 blocks at maximum, where a block represents a set of Scores,
+    that is to say, groups of films having the same num_restr. As there will not always exist 5 films having 
+    diferent num_restr, the vector cuttings, could have less than 5 separations of blocks. To associate a 
+    probability to each block, a vector of probabilities is defined, which contains decreasing probabilities 
+    to be assigned to blocks.
 */
 vector<BlockInfo> blocks_probabilities(int fs_size)
 {
     vector<BlockInfo> cuttings;
-    cuttings.push_back({0, 0.0}); //representa el 1r bloc, com a mínim sempre hi haurà un
-    double limit_block = (fs_size > 5 ? (fs_size / 5) : 1); //el límit del primer block comença en s/5
-    double denom = 32 - pow(2, (4 - (fs_size > 5 ? 4 : fs_size - 1)));//
-    vector<double> probs = {16/denom, 8/denom, 4/denom, 2/denom, 1/denom}; //en cas que hi hagin menys de 5 blocs, els últims tindran una probabilitat però no els usarem, sinó PROB > 1
-    double prob_accumulated = probs[0]; //ini
-    for (int j = 0, block = 1; j < fs_size; ++j) { //associem una probabilitat als 5 blocs del vector
-        if (int(cuttings.size()) < 5 and j >= int(limit_block)) { //hem passat al següent block, restringim < 4 pq si el bloc coincideix al final, afegeix 5 separadors
-            cuttings.push_back({ int(limit_block), prob_accumulated }); //guardem iterador a la posició on hi ha un break. Ha d'haver 4 o menys sempre, ja que volem que com a màxim hi hagi 5 blocs diferents
+    cuttings.push_back({0, 0.0}); //beginning of the first block
+    double limit_block = (fs_size > 5 ? (fs_size / 5.0) : 1.0); 
+    //the first block contains fs_size/5.0 elements when there are 5 or more diferent number of restrictions
+    
+    double denom = 32 - pow(2, (4 - (fs_size > 5 ? 4 : fs_size - 1))); 
+    //sum of the powers of 2 conditioned to the number of blocks the vector will have
+    vector<double> probs = {16/denom, 8/denom, 4/denom, 2/denom, 1/denom}; 
+    //when fs_size < 5, last elements will be omitted
+
+    double prob_accumulated = probs[0]; 
+    for (int j = 0, block = 1; j < fs_size; ++j) { //associate a probability to each block
+        if (int(cuttings.size()) < 5 and j >= int(limit_block)) { //next block has been reached
+            cuttings.push_back({ int(limit_block), prob_accumulated });
             prob_accumulated += probs[block];
-            limit_block += fs_size / 5; //si s/5 és 0 vol dir que tenim menys de 5 elements i cada block estarà format per un sol element
+            limit_block += fs_size / 5.0; 
             ++block;
         }
     }
-    cuttings.push_back({ fs_size, 1 });
+    cuttings.push_back({ fs_size, 1 }); //determines the end of the vector. Helpful during the generation
     return cuttings;
 }
 
@@ -304,11 +313,11 @@ void randomized_greedy(const vector<pair<int, int>>& films_by_rest, const vector
     //occupied_rooms[k] = number of projecting rooms at day 'k'
     //the two elements above skip the first row/position to avoid problems with zero-indexation
 
-    //mirar de posar en comptes de num_films - num_films_without_restr, fer-ho amb perm.size()
-    while (films_being_projected < num_films - num_films_without_restr and lenght_festival < shortest_festival) {
+    while (films_being_projected < int(perm.size()) and lenght_festival < shortest_festival) {
         for (int i = start_point; i < cuttings[index_at_start + 1].starting; ++i) { //lineal respecte nombre de pelis
             const Score& R = films_scores[i]; //canviar variable R
-            for (int k = R.first_idx; k < R.first_idx + R.cardinal; ++k) {
+            //many films can have the same amount of restrictions
+            for (int k = R.first_idx; k < R.first_idx + R.cardinal; ++k) { 
                 if(not used[k]){
                     used[k] = true;
                     const int film = films_by_rest[k].first;
@@ -334,19 +343,19 @@ double set_random_seed()
     return (double)rand() / (double)RAND_MAX;
 }
 
-//*donat una probabilitat aleatòria retorna l'iterador en el vector que determina quin és el primer element per generar a partir d'allà
 /*
 Works on:
-    Given a random probability ("films_seed"), updates both first block's index and first "num_restr" 
-    to start generating with.
+    Given a random probability "films_seed", updates both "index_at_start" and "start_point" variables 
+    that will determine where the random probability has fallen and indeed start generating by that block.
+    While the first one will be the index of the starting block, the second one is the value taken on 
+    that position.
 */
-void position_to_start_at(const vector<BlockInfo>& cuttings, const vector<Score>& films_scores, 
-                          double film_seed, int& index_at_start, int& start_point){
-    int i_block = 1; //position 0 with probability 0 is not needed
-    while(i_block != cuttings.size() and film_seed > cuttings[i_block].cdf){  //*la posició i_block = 0 no ens fa falta
-        ++i_block;
-    }
-    index_at_start = i_block - 1;
+void position_to_start_at(const vector<BlockInfo>& cuttings, double film_seed, int& index_at_start, 
+                          int& start_point){                       
+    int i_block = 1;
+    //checking up if the cumulative probability outstrip the random seed
+    while(i_block != cuttings.size() and film_seed > cuttings[i_block].cdf){ ++i_block;}
+    index_at_start = i_block - 1; 
     start_point = cuttings[index_at_start].starting;
 }
 
@@ -365,7 +374,7 @@ void optimal_billboard_schedule()
         double film_seed = set_random_seed(); 
         int index_at_start = UNDEF; //block's index with which generation will start
         int start_point = UNDEF; //position of the first "num_restr" used in "films_scores" vector
-        position_to_start_at(cuttings, films_scores, film_seed, index_at_start, start_point); //*és l'índex del vector films_scores on comença el bloc on començarem a generar
+        position_to_start_at(cuttings, film_seed, index_at_start, start_point); //*és l'índex del vector films_scores on comença el bloc on començarem a generar
         randomized_greedy(films_by_restr, films_scores, cuttings, index_at_start, start_point, 1);
     }
 }

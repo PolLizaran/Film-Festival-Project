@@ -1,13 +1,13 @@
 0.0
 6
-film1 1 cinema1
-film2 1 cinema2
-film5 2 cinema1
-film7 2 cinema2
-film8 3 cinema1
-film4 3 cinema2
-film10 4 cinema1
-film11 4 cinema2
-film6 5 cinema1
-film9 5 cinema2
-film3 6 cinema1
+film8 1 cinema1
+film4 1 cinema2
+film10 2 cinema1
+film1 2 cinema2
+film2 3 cinema1
+film5 3 cinema2
+film7 4 cinema1
+film6 4 cinema2
+film11 5 cinema1
+film3 5 cinema2
+film9 6 cinema1
