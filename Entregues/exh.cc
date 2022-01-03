@@ -2,18 +2,16 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <limits>
+#include <limits.h>
 #include <map>
 #include <math.h>
 #include <string>
 #include <time.h>
-#include <utility>
 #include <vector>
 
 using namespace std;
 using MI = vector<vector<int>>; //matrix of integers
 using ALI = vector<vector<int>>; //adjacency list of integers
-using fd = pair<int, int>; //represents a film and the day of its projection
 
 /* GLOBAL VARIABLES ------------------------------------------------------------------------------- */
 clock_t start = clock();
@@ -31,6 +29,16 @@ map<string, int> filmindex; //stores the name of a film and its position in the 
 string output_file;
 /* ------------------------------------------------------------------------------------------------ */
 
+struct Projection{
+    int film_indx_p; 
+    int day_proj;
+};
+
+struct Orderings{ //used when sorting the films
+    int film_indx_o; 
+    int num_of_restr;
+};
+
 void read_films(ifstream& input)
 {
     input >> num_films;
@@ -43,14 +51,14 @@ void read_films(ifstream& input)
 
 /*
 Works on:
-    Fills the global adjacency list variable "Incompatibilities". Those films that are forbiden to be
+    Fills the global adjacency list variable "Incompatibilities". Those films that are forbidden to be
     projected together are added in both films' lists.
 */
 void read_incompatibilities(ifstream& input)
 {
     Inc = ALI(num_films);
     input >> num_preferences;
-    for (unsigned int i = 0; i < num_preferences; ++i) {
+    for (int i = 0; i < num_preferences; ++i) {
         string a, b;
         input >> a >> b;
         Inc[filmindex[a]].push_back(filmindex[b]);
@@ -62,7 +70,7 @@ void read_cinema_rooms(ifstream& input)
 {
     input >> num_rooms;
     cinema_rooms = vector<string>(num_rooms);
-    for (unsigned int i = 0; i < num_rooms; ++i)
+    for (int i = 0; i < num_rooms; ++i)
         input >> cinema_rooms[i];
 }
 
@@ -80,29 +88,29 @@ Args:
 Returns:
     The film that is more restricted.
 */
-bool compare_by_restr(const pair<int, int>& A, const pair<int, int>& B)
+bool compare_by_restr(const Orderings& A, const Orderings& B)
 {
-    if (A.second == B.second)
-        return A.first < B.first; //arbitary selection
-    return A.second > B.second;
+    if (A.num_of_restr == B.num_of_restr)
+        return A.film_indx_o < B.film_indx_o; //arbitary selection
+    return A.num_of_restr > B.num_of_restr;
 }
 
 /*
 Returns:
-    A vector of pairs containing the index of a film and the number of films with which is forbidden
-    to be projected in the same day. Its elements are in descending order.
+    A sorted vector of structs containing the index of a film and the number of films with which is 
+    forbidden to be projected in the same day. Its elements are in descending order.
 */
-vector<pair<int, int>> order_films_by_rest()
+vector<Orderings> order_films_by_rest()
 {
-    vector<pair<int, int>> films_by_rest(num_films);
+    vector<Orderings> films_by_rest(num_films);
     for (int i = 0; i < Inc.size(); ++i) {
-        films_by_rest[i] = { i, Inc[i].size() };
+        films_by_rest[i] = { i, int(Inc[i].size()) }; //film 'i' has Inc[i].size() restrictions
     }
     sort(films_by_rest.begin(), films_by_rest.end(), compare_by_restr);
     return films_by_rest;
 }
 
-void print_projection(const vector<fd>& perm)
+void print_projection(const vector<Projection>& perm)
 {
     ofstream output(output_file);
     output << setprecision(1) << fixed;
@@ -110,15 +118,14 @@ void print_projection(const vector<fd>& perm)
 
     output << elapsed_time << endl
            << shortest_festival << endl;
-    cout << shortest_festival << endl;
 
-    // looks across the vector "perm" to print those films that match with the day. Cinema rooms
-    // are choosen arbitrarily
+    // looks across the vector "perm" to print those films that match with the day of projection. 
+    // Cinema rooms are choosen arbitrarily.
     for (int day = 1; day <= num_films; ++day) {
         int r = 0; //room in where a film will be projected
         for (int f = 0; f < num_films; ++f) { //f = film
-            if (perm[f].second == day) {
-                output << billboard[perm[f].first] << " " << perm[f].second
+            if (perm[f].day_proj == day) {
+                output << billboard[perm[f].film_indx_p] << " " << perm[f].day_proj
                        << " " << cinema_rooms[r] << endl;
                 ++r;
             }
@@ -143,8 +150,7 @@ Args:
 */
 void propagate_restrictions(MI& prohibitions_per_day, int day, int film, int modifier)
 {
-    for (const int& banned_film : Inc[film])
-        prohibitions_per_day[day][banned_film] += modifier;
+    for (const int& banned_film : Inc[film]) prohibitions_per_day[day][banned_film] += modifier;
 }
 
 /*
@@ -154,15 +160,14 @@ Args:
     - length_festival: current days spent on the festival
 
 Works on:
-    Computes all the possible shcedules of the films projections regarding their restricions. It
-    iterates throughtout all the current days and, in case a film can be projected, adds it according
-    to its day of projection. While iterating, those threads that overtake "shortest_festival" are
-    omitted.
-    Whenever is required, it increases the festival's length allowing new
-    combinations to be generated. As solutions may not be optimal, once a thread ends, changes made
-    must be undone.
+    Computes all the possible shcedules of the films projections regarding their restricions, making
+    an exhaustive search. It iterates throughout all the current days and, in case a film can be projected, 
+    adds it according to its day of projection. While iterating, those threads that overtake 
+    "shortest_festival" are omitted.
+    Whenever is required, it increases the festival's length allowing new combinations to be generated. 
+    As solutions may not be optimal, once a thread ends, changes made must be undone.
 */
-void generate_schedule(int k, const vector<pair<int, int>>& films_by_rest, vector<fd>& perm,
+void generate_schedule(int k, const vector<Orderings>& films_by_rest, vector<Projection>& perm,
                        vector<int>& occupied_rooms, MI& prohibitions_per_day, vector<bool>& used,
                        int lenght_festival)
 {
@@ -174,7 +179,7 @@ void generate_schedule(int k, const vector<pair<int, int>>& films_by_rest, vecto
         }
     } else {
         for (int day = 1; day <= lenght_festival; ++day) {
-            const int film = films_by_rest[k].first;
+            const int film = films_by_rest[k].film_indx_o; //generation from more to less restricted
             if (not used[film] and lenght_festival < shortest_festival) {
                 if (can_be_projected(prohibitions_per_day, occupied_rooms, film, day)) {
                     used[film] = true;
@@ -196,9 +201,9 @@ void generate_schedule(int k, const vector<pair<int, int>>& films_by_rest, vecto
 
 void optimal_billboard_schedule()
 {
-    vector<fd> perm(num_films); //contains a partial solution (<film, day_of_projection>)
+    vector<Projection> perm(num_films); //contains a partial solution 
     vector<bool> used(num_films, false);
-    vector<pair<int, int>> films_by_rest = order_films_by_rest();
+    vector<Orderings> films_by_rest = order_films_by_rest();
 
     MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
     //rows simulate days of projection; columns are the films' index; an entry of the matrix contains

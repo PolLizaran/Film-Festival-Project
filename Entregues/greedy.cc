@@ -5,13 +5,11 @@
 #include <map>
 #include <string>
 #include <time.h>
-#include <utility>
 #include <vector>
 
 using namespace std;
 using MI = vector<vector<int>>; //matrix of integers
 using ALI = vector<vector<int>>; //adjacency list of integers
-using fd = pair<int, int>; //represents a film and the day of its projection
 
 /* GLOBAL VARIABLES ------------------------------------------------------------------------------- */
 clock_t start = clock();
@@ -27,6 +25,16 @@ map<string, int> filmindex; //stores the name of a film and its position in the 
 string output_file;
 /* ------------------------------------------------------------------------------------------------ */
 
+struct Projection{
+    int film_indx_p; 
+    int day_proj;
+};
+
+struct Orderings{ //used when sorting the films
+    int film_indx_o; 
+    int num_of_restr;
+};
+
 void read_films(ifstream& input)
 {
     input >> num_films;
@@ -39,7 +47,7 @@ void read_films(ifstream& input)
 
 /*
 Works on:
-    Fills the global adjacency list variable "Incompatibilities". Those films that are forbiden to be 
+    Fills the global adjacency list variable "Incompatibilities". Those films that are forbidden to be 
     projected together are added in both films' lists.
 */
 void read_incompatibilities(ifstream& input)
@@ -76,44 +84,44 @@ Args:
 Returns:
     The film that is more restricted.
 */
-bool compare_by_restr(const pair<int, int>& A, const pair<int, int>& B)
+bool compare_by_restr(const Orderings& A, const Orderings& B)
 {
-    if (A.second == B.second)
-        return A.first < B.first; //arbitary selection
-    return A.second > B.second;
+    if (A.num_of_restr == B.num_of_restr)
+        return A.film_indx_o < B.film_indx_o; //arbitary selection
+    return A.num_of_restr > B.num_of_restr;
 }
 
 /*
 Returns:
-    A vector of pairs containing the index of a film and the number of films with which is forbidden
-    to be projected in the same day. Its elements are in descending order.
+    A sorted vector of structs containing the index of a film and the number of films with which is 
+    forbidden to be projected in the same day. Its elements are in descending order.
 */
-vector<pair<int, int>> order_films_by_rest()
+vector<Orderings> order_films_by_rest()
 {
-    vector<pair<int, int>> films_by_rest(num_films);
+    vector<Orderings> films_by_rest(num_films);
     for (int i = 0; i < Inc.size(); ++i) {
-        films_by_rest[i] = { i, Inc[i].size() };
+        films_by_rest[i] = { i, int(Inc[i].size()) }; //film 'i' has Inc[i].size() restrictions
     }
     sort(films_by_rest.begin(), films_by_rest.end(), compare_by_restr);
     return films_by_rest;
 }
 
-void print_projection(const vector<fd>& perm, int lenght_festival)
+void print_projection(const vector<Projection>& perm, int length_festival)
 {
     ofstream output(output_file);
     output << setprecision(1) << fixed;
     elapsed_time = (clock() - start) / (double)CLOCKS_PER_SEC;
 
     output << elapsed_time << endl
-           << lenght_festival << endl;
+           << length_festival << endl;
 
-    // looks across the vector "perm" to print those films that match with the day. Cinema rooms
-    // are choosen arbitrarily
+    // looks across the vector "perm" to print those films that match with the day of projection. 
+    // Cinema rooms are choosen arbitrarily.
     for (int day = 1; day <= num_films; ++day) {
         int r = 0; //room in where a film will be projected
         for (int f = 0; f < num_films; ++f) { //f = film
-            if (perm[f].second == day) {
-                output << billboard[perm[f].first] << " " << perm[f].second
+            if (perm[f].day_proj == day) {
+                output << billboard[perm[f].film_indx_p] << " " << perm[f].day_proj
                        << " " << cinema_rooms[r] << endl;
                 ++r;
             }
@@ -138,24 +146,23 @@ Args:
 */
 void propagate_restrictions(MI& prohibitions_per_day, int day, int film, int modifier)
 {
-    for (const int& banned_film : Inc[film])
-        prohibitions_per_day[day][banned_film] += modifier;
+    for (const int& banned_film : Inc[film]) prohibitions_per_day[day][banned_film] += modifier;
 }
 
 /* 
 Works on:
     Searches a configuration of the cinema festival, that enables all films to be projected, taking 
     into account the restrictions among others and following a greedy strategy. This means it will 
-    not always be an optimal solution. It iterates througout the vector of films ordered by their 
+    not always be an optimal solution. It iterates throughout the vector of films ordered by their 
     number of restrictions and assign them in the first day where can be projected. In case a film 
     could not be assigned to a day, festival's lenght is increased as the film will need an extra day.
 */
-void generate_greedy_schedule(const vector<pair<int, int>>& films_by_rest, vector<fd>& perm, 
+void generate_greedy_schedule(const vector<Orderings>& films_by_rest, vector<Projection>& perm, 
                               vector<int>& occupied_rooms, MI& prohibitions_per_day)
 {
     int lenght_festival = 1; //current days spent on the festival
     for (int k = 0; k < num_films; ++k) {
-        const int film = films_by_rest[k].first;
+        const int film = films_by_rest[k].film_indx_o; //generation from more to less restricted
         bool film_is_projected = false; //boolean for each k-th film 
         for(int day = 1; day <= lenght_festival and not film_is_projected; ++day){ 
             if (can_be_projected(prohibitions_per_day, occupied_rooms, film, day)) {
@@ -174,8 +181,8 @@ void generate_greedy_schedule(const vector<pair<int, int>>& films_by_rest, vecto
 
 void optimal_billboard_schedule()
 {
-    vector<fd> perm(num_films); //contains a partial solution (<film, day_of_projection>)
-    vector<pair<int, int>> films_by_rest = order_films_by_rest();
+    vector<Projection> perm(num_films); //contains a partial solution 
+    vector<Orderings> films_by_rest = order_films_by_rest();
 
     MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
     //rows simulate days of projection; columns are the films' index; an entry of the matrix contains

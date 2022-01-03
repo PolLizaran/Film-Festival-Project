@@ -1,5 +1,5 @@
 /* CODE INFORMATION ------------------------------------------------------------------------------- 
-The randomness of this metaheuristic is based on the idea of splitting the vector where information
+The randomness of this metaheuristic is based on the idea of splitting the vector where the information
 about films is stored. The groups of films with similar number of restrictions are what we call: 
 blocks.
 Each block has a conditioned probability of being selected to start the metaheuristic from there. 
@@ -10,19 +10,17 @@ Once this is done, we have implemented a randomized greedy algorithm as in the G
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <limits>
+#include <limits.h>
 #include <map>
 #include <math.h>
 #include <stdlib.h>
 #include <string>
 #include <time.h>
-#include <utility>
 #include <vector>
 
 using namespace std;
 using MI = vector<vector<int>>; //matrix of integers
 using ALI = vector<vector<int>>; //adjacency list of integers
-using fd = pair<int, int>; //represents a film and the day of its projection
 
 /* GLOBAL VARIABLES ------------------------------------------------------------------------------- */
 clock_t start = clock();
@@ -31,9 +29,9 @@ double elapsed_time;
 const int& UNDEF = -1;
 
 int num_films, num_preferences, num_rooms;
-int min_required_lenght, shortest_festival = INT_MAX; //best configutation so far (initially infinite)
+int shortest_festival = INT_MAX; //best configutation so far (initially infinite)
 int num_films_without_restr = UNDEF;
-int num_unequal_restr; 
+int min_required_lenght, num_unequal_restr; 
 
 vector<string> billboard, cinema_rooms;
 ALI Inc; // stores the Incompatibilities among films that can't be projected in the same day
@@ -42,6 +40,16 @@ map<string, int> filmindex; //stores the name of a film and its position in the 
 
 string output_file;
 /* ------------------------------------------------------------------------------------------------ */
+
+struct Projection{
+    int film_indx_p; 
+    int day_proj;
+};
+
+struct Orderings{ //used when sorting the films
+    int film_indx_o; 
+    int num_of_restr;
+};
 
 //stores information about those films that have the same number of restrictions. The criteria of
 //selection during the heuristic will be determined by "num_restr"
@@ -108,24 +116,24 @@ Args:
 Returns:
     The film that is more restricted.
 */
-bool compare_by_restr(const pair<int, int>& A, const pair<int, int>& B)
+bool compare_by_restr(const Orderings& A, const Orderings& B)
 {
-    if (A.second == B.second)
-        return A.first < B.first; //arbitary selection
-    return A.second > B.second;
+    if (A.num_of_restr == B.num_of_restr)
+        return A.film_indx_o < B.film_indx_o; //arbitary selection
+    return A.num_of_restr > B.num_of_restr;
 }
 
 /*
 Returns:
-    A vector of pairs containing the index of a film and the number of films with which is forbidden
-    to be projected in the same day. Its elements are in descending order.
+    A sorted vector of structs containing the index of a film and the number of films with which is 
+    forbidden to be projected in the same day. Its elements are in descending order.
 */
-vector<pair<int, int>> order_films_by_restr()
+vector<Orderings> order_films_by_restr()
 {
-    vector<pair<int, int>> films_by_restr;
-    films_by_restr = vector<pair<int, int>>(num_films);
+    vector<Orderings> films_by_restr;
+    films_by_restr = vector<Orderings>(num_films);
     for (int i = 0; i < Inc.size(); ++i) {
-        films_by_restr[i] = { i, Inc[i].size() };
+        films_by_restr[i] = { i, int(Inc[i].size()) }; //film 'i' has Inc[i].size() restrictions
     }
     sort(films_by_restr.begin(), films_by_restr.end(), compare_by_restr);
     return films_by_restr;
@@ -137,17 +145,16 @@ Returns:
     variable that counts those films without restrictions, that are free to be projected anywhere. 
     Films that achieve "num_restr" = 0 are not added in the vector.
 */
-vector<Score> agrupate_by_restrictions(const vector<pair<int, int>>& films_by_restr){
-    //remind that "films_by_restr" contains (<film, num_restr>) ordered by number of restrictions
+vector<Score> agrupate_by_restrictions(const vector<Orderings>& films_by_restr){
     num_films_without_restr = 0;
     vector<Score> films_scores;
-    films_scores.push_back({ films_by_restr[0].second, 1, 0}); //(<num_rest, cardinal, first_idx>)
+    films_scores.push_back({ films_by_restr[0].num_of_restr, 1, 0}); //(<num_rest, cardinal, first_idx>)
     for (int i = 1; i < num_films; ++i) {
-        if(films_by_restr[i].second != 0){ //omit none restricted films 
-            if (films_by_restr[i].second == films_scores.back().num_restr) { //"num_restr" already existing
+        if(films_by_restr[i].num_of_restr != 0){ //omit none restricted films 
+            if (films_by_restr[i].num_of_restr == films_scores.back().num_restr) { //"num_restr" already existing
                 ++films_scores.back().cardinal;
             } else {
-                films_scores.push_back({ films_by_restr[i].second, 1, i});
+                films_scores.push_back({ films_by_restr[i].num_of_restr, 1, i});
             }
         }else{
             ++num_films_without_restr;
@@ -170,19 +177,21 @@ vector<BlockInfo> blocks_probabilities(int fs_size)
     vector<BlockInfo> cuttings;
     cuttings.push_back({0, 0.0}); //beginning of the first block
     double limit_block = (fs_size > 5 ? (fs_size / 5.0) : 1.0); 
-    //the first block contains fs_size/5.0 elements when there are 5 or more diferent number of restrictions
+    //the first block contains fs_size/5.0 elements in case there are 5 or more different number of restrictions.
+    //Otherwise each block will have just one element (film)
     
-    double denom = 32 - pow(2, (4 - (fs_size > 5 ? 4 : fs_size - 1))); 
-    //sum of the powers of 2 conditioned to the number of blocks the vector will have
+    //numerators of the vector of probabilities are powers of 2 (16 + 8 + 4 + 2 + 1 = 31)
+    double denom = 32 - pow(2, (4 - (fs_size > 5 ? 4 : fs_size - 1))); //(equal to 31 when there are 5 blocks)
+    //is the sum of the powers of 2 conditioned to the numbers of blocks the vector has.
     vector<double> probs = {16/denom, 8/denom, 4/denom, 2/denom, 1/denom}; 
-    //when fs_size < 5, last elements will be omitted
+    //when fs_size < 5, last probabilities will be omitted
 
     double prob_accumulated = probs[0]; 
     for (int j = 0, block = 1; j < fs_size; ++j) { //associate a probability to each block
         if (int(cuttings.size()) < 5 and j >= int(limit_block)) { //next block has been reached
-            cuttings.push_back({ int(limit_block), prob_accumulated });
+            cuttings.push_back({ int(limit_block), prob_accumulated }); //starting & cdf
             prob_accumulated += probs[block];
-            limit_block += fs_size / 5.0; 
+            limit_block += fs_size / 5.0; //ending position of the next block
             ++block;
         }
     }
@@ -190,7 +199,7 @@ vector<BlockInfo> blocks_probabilities(int fs_size)
     return cuttings;
 }
 
-void print_projection(const vector<fd>& perm)
+void print_projection(const vector<Projection>& perm)
 {
     ofstream output(output_file);
     output << setprecision(1) << fixed;
@@ -198,15 +207,14 @@ void print_projection(const vector<fd>& perm)
 
     output << elapsed_time << endl
            << shortest_festival << endl;
-    cout << shortest_festival << endl;
-
-    // looks across the vector "perm" to print those films that match with the day. Cinema rooms
-    // are choosen arbitrarily
+    
+    // looks across the vector "perm" to print those films that match with the day of projection. 
+    // Cinema rooms are choosen arbitrarily.
     for (int day = 1; day <= num_films; ++day) {
         int r = 0; //room in where a film will be projected
         for (int f = 0; f < num_films; ++f) { //f = films
-            if (perm[f].second == day) {
-                output << billboard[perm[f].first] << " " << perm[f].second
+            if (perm[f].day_proj == day) {
+                output << billboard[perm[f].film_indx_p] << " " << perm[f].day_proj
                        << " " << cinema_rooms[r] << endl;
                 ++r;
             }
@@ -227,9 +235,7 @@ int choose_day_from_RCL(const MI& prohibitions_per_day, const vector<int>& occup
                         int& lenght_festival){
     vector<int> candidates;
     for(int day = 1; day <= lenght_festival; ++day){
-        //no prohibitions and enough free rooms 
-        if(prohibitions_per_day[day][film] == 0 and occupied_rooms[day] < num_rooms) 
-            candidates.push_back(day);
+        if(prohibitions_per_day[day][film] == 0 and occupied_rooms[day] < num_rooms) candidates.push_back(day);
     }
     if (candidates.size() == 0){ //none compatible days found to project the films, an extra day is needed
         ++lenght_festival;
@@ -239,7 +245,7 @@ int choose_day_from_RCL(const MI& prohibitions_per_day, const vector<int>& occup
         int elapsed_time2 = (clock() - start) / (double)CLOCKS_PER_SEC;
         if(elapsed_time2 > 15) restricted_days = 0; 
         int random_restricted_candidate = rand() % (candidates.size() - restricted_days);
-        return candidates[random_restricted_candidate]; 
+        return candidates[random_restricted_candidate]; //random day
     }
 }
 
@@ -250,8 +256,7 @@ Args:
 */
 void propagate_restrictions(MI& prohibitions_per_day, int day, int film, int modifier)
 {
-    for (const int& banned_film : Inc[film])
-        prohibitions_per_day[day][banned_film] += modifier;
+    for (const int& banned_film : Inc[film]) prohibitions_per_day[day][banned_film] += modifier;
 }
 
 /*
@@ -278,8 +283,8 @@ Works on:
     and that by consequence can be projected in any room that is free. It also modifies the length_festival
     whenever extra days are required to project the films.
 */
-void add_zero_films(const vector<pair<int, int>>& films_by_restr, vector<int>& occupied_rooms, 
-                    vector<fd>& perm, int& length_festival) 
+void add_zero_films(const vector<Orderings>& films_by_restr, vector<int>& occupied_rooms, 
+                    vector<Projection>& perm, int& length_festival) 
 {
     int day = 1;
     int fbr_idx_film = int(films_by_restr.size()) - num_films_without_restr; 
@@ -290,7 +295,7 @@ void add_zero_films(const vector<pair<int, int>>& films_by_restr, vector<int>& o
         if (occupied_rooms[day] < num_rooms) { 
             ++fbr_idx_film;
             ++occupied_rooms[day];
-            perm.push_back({films_by_restr[zero_film].first, day});
+            perm.push_back({films_by_restr[zero_film].film_indx_o, day});
             --zero_film;
         } else ++day; //could not be projected
     }
@@ -302,20 +307,20 @@ Args:
     - length_festival: current days spent on the festival
 Works on:
     Given the index determining the place to start the heuristic, it computes a schedule for the festival. This algorithm 
-    is based on a GRASP method, as it is implemented as a randomized greedy, in where the Restricted Candidate List are the 
-    available days to project a film. Once the films of the first block are assigned, the algorithm jumps to the beginning 
-    of the vector "cuttings" and then keeps iterating for every pending block. The reason why the algorithm needs two loops 
-    is because the vector "films_scores" contains information about the films having same "num_restr" but those films are in 
-    the vector "films_by_restr". 
+    is based on a GRASP method, as it is implemented as a randomized greedy, in where the Restricted Candidate List is the 
+    list of available days to project a film. Once the films of the first block are assigned, the algorithm jumps to the 
+    beginning of the vector "cuttings" and then keeps iterating for every pending block. The reason why the algorithm needs 
+    two loops is because the vector "films_scores" contains information about the films having same "num_restr" but those 
+    films are in the vector "films_by_restr". 
     For each existing film, the day in where it will be projected is randomly selected from the available restricted candidates.
 */
-void metaheuristic(const vector<pair<int, int>>& films_by_rest, const vector<Score>& films_scores,
-                       const vector<BlockInfo>& cuttings,  int index_at_start, int amount_restr, int lenght_festival)
+void metaheuristic(const vector<Orderings>& films_by_rest, const vector<Score>& films_scores,
+                   const vector<BlockInfo>& cuttings,  int index_at_start, int amount_restr, int lenght_festival)
 {
     int films_being_projected = 0;
     bool first_block = true; 
     vector<bool> used (num_films);
-    vector<fd> perm(num_films - num_films_without_restr); //contains a partial solution (<film, day_of_projection>)
+    vector<Projection> perm(num_films - num_films_without_restr); //contains a partial solution
     MI prohibitions_per_day(num_films + 1, vector<int>(num_films, 0));
     //rows simulate days of projection; columns are the films' index; an entry of the matrix contains
     //the amount of retrictions of a film to be projected on that day
@@ -326,12 +331,14 @@ void metaheuristic(const vector<pair<int, int>>& films_by_rest, const vector<Sco
     //SOLUTION CONSTRUCTION
     while (films_being_projected < int(perm.size()) and lenght_festival < shortest_festival) {
         //the two loops are linear in regard of the total number of films
-        for (int i = amount_restr; i < cuttings[index_at_start + 1].starting; ++i) { //one block
+        for (int i = amount_restr; i < cuttings[index_at_start + 1].starting; ++i) {
+            //loop for all the films of a block
             const Score& group_same_restr = films_scores[i]; 
-            for (int k = group_same_restr.first_idx; k < group_same_restr.first_idx + group_same_restr.cardinal; ++k) { 
+            for (int k = group_same_restr.first_idx; k < group_same_restr.first_idx + group_same_restr.cardinal; ++k) {
+                //loop for all films having the same num_restr 
                 if(not used[k]){
                     used[k] = true;
-                    const int film = films_by_rest[k].first;
+                    const int film = films_by_rest[k].film_indx_o; //generation from more to less restricted
                     int day = choose_day_from_RCL(prohibitions_per_day, occupied_rooms, film, lenght_festival);
                     perm[k] = {film, day};
                     ++occupied_rooms[day];
@@ -353,7 +360,7 @@ void metaheuristic(const vector<pair<int, int>>& films_by_rest, const vector<Sco
 
 double set_random_seed()
 {
-    return (double)rand() / (double)RAND_MAX;
+    return (double)rand() / (double)RAND_MAX; //random number between 0 and 1
 }
 
 /*
@@ -367,7 +374,7 @@ void position_to_start_at(const vector<BlockInfo>& cuttings, double film_seed, i
                           int& amount_restr){                       
     int i_block = 1;
     //checking up if the cumulative probability outstrip the random seed
-    while(i_block != cuttings.size() and film_seed > cuttings[i_block].cdf){ ++i_block;}
+    while(i_block != cuttings.size() and film_seed > cuttings[i_block].cdf) ++i_block;
     index_at_start = i_block - 1; 
     amount_restr = cuttings[index_at_start].starting;
 }
@@ -375,7 +382,7 @@ void position_to_start_at(const vector<BlockInfo>& cuttings, double film_seed, i
 void optimal_billboard_schedule()
 {
     srand(time(NULL)); //set a seed according to the current time
-    vector<pair<int, int>> films_by_restr = order_films_by_restr();
+    vector<Orderings> films_by_restr = order_films_by_restr();
     vector<Score> films_scores = agrupate_by_restrictions(films_by_restr); 
     int fs_size = int(films_scores.size()); //the size of "films_scores" is the number of different "num_restr" 
     num_unequal_restr = fs_size;
@@ -386,7 +393,7 @@ void optimal_billboard_schedule()
     while(shortest_festival != min_required_lenght){ //finishes when the optimal solution is found
         double film_seed = set_random_seed(); 
         int index_at_start = UNDEF; //block's index to start the heuristic
-        int amount_restr = UNDEF; //value taken by the first element of the block (amount of forbiddings)
+        int amount_restr = UNDEF; //value taken by the first element of the initial block (amount of forbiddings)
         position_to_start_at(cuttings, film_seed, index_at_start, amount_restr); 
         metaheuristic(films_by_restr, films_scores, cuttings, index_at_start, amount_restr, 1);
     }
