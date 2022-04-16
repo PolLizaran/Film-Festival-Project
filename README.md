@@ -13,3 +13,9 @@ To execute this codes you have to previously compile them and then execute them 
 ./EXECUTABLE_NAME INPUT_CASE.inp OUTPUT_NAME.txt
 
 - - -
+
+## Authors
+
+Arlet Corominas Muns (https://github.com/arletcoro) & Pol Lizaran Campano (https://github.com/PolLizaran)
+
+Data Science and Engineering, UPC, 2021
